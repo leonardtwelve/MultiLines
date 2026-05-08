@@ -1,0 +1,28 @@
+name: "Retour d'expérience"
+description: "Partager un retour sur une fonctionnalité existante"
+title: "[FEEDBACK] "
+labels: ["feedback", "status:triage"]
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: "Type de retour"
+      options:
+        - Comportement trop strict / faux positif
+        - Fonctionnalité manquante
+        - Message peu clair
+        - Suggestion d'amélioration UX
+        - Retour positif
+        - Autre
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: "Détails"
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: "Suggestion d'amélioration"
