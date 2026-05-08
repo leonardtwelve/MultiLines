@@ -1,32 +1,42 @@
-# MultiLines
+# Pixel Quests
 
 ## Vision
-Jeu de plateau interactif multi-joueurs en temps réel. L'objectif est de proposer une expérience ludique en ligne où plusieurs joueurs s'affrontent ou coopèrent autour d'un plateau partagé.
+Plateforme web de jeux d'aventure multijoueurs en pixel art, jouables autour d'un écran partagé (tablette posée au centre de la table). Aventure de lancement : **Le Casse de la Banque Lune** — cyberpunk, 3-5 joueurs, ~35 min, rôles asymétriques avec bluff.
 
 ## Stack technique
-**À décider** — voir l'issue #1 (choix de stack).
-
-Options envisagées :
-- Next.js 15 + TypeScript + Tailwind + Socket.io/Pusher (cohérent avec Vivier)
-- Next.js 15 + Supabase Realtime (auth + DB + channels temps réel intégrés)
-- Node.js + Socket.io + Canvas HTML5 (plus léger)
+- TypeScript **strict** (pas de `any`)
+- Phaser 3 (rendu jeu) — instancié uniquement au lancement d'une aventure
+- Vite (dev server + build)
+- Vitest + jsdom (tests unitaires)
+- ESLint + Prettier
+- pnpm — Node 20 LTS minimum
 
 ## Décisions d'architecture
-<!-- À compléter au fil du projet. -->
+- **Séparation stricte moteur / aventure** (non négociable) :
+  - `src/core/` = moteur générique réutilisable (events, scènes, joueurs, tour, save, audio, contrats UI).
+  - `src/adventures/<id>/` = contenu spécifique. Ajouter une aventure = créer un dossier, **sans toucher à `core/`**.
+  - Les aventures dépendent de `core/`. **L'inverse est interdit** (l'ESLint pourra le rejeter à terme).
+- **HomeScreen est DOM** (hors Phaser). Phaser n'est instancié qu'au lancement d'une aventure pour économiser les ressources.
+- **EventBus typé** = seul canal aventure ↔ moteur sans couplage direct.
+- **MIT** par défaut.
+- Voir `docs/ARCHITECTURE.md` pour le détail.
 
 ## Environnement
-<!-- À compléter une fois la stack choisie : URLs dev/prod, variables d'env, etc. Jamais de secrets ici. -->
+- Repo : https://github.com/leonardtwelve/MultiLines (renommage en `PixelQuests` à effectuer manuellement — voir rapport de bootstrap)
+- Branches : `main` (stable), `develop` (intégration). Les features partent de `develop`.
+- CI : `.github/workflows/ci.yml` — install + lint + typecheck + test + build.
 
 ## Workflow de session
 1. Lire ce fichier CLAUDE.md pour reprendre le contexte
 2. Consulter les GitHub Issues ouvertes : `gh issue list --state open`
 3. Valider le plan d'action avant de coder
-4. Développer
+4. Développer (commits Conventional, branche issue de `develop`)
 5. Mettre à jour l'issue (fermeture via `Closes #N` dans le commit)
 6. Mettre à jour ce fichier si changement d'architecture
 
 ## Conventions
-- Commits : `feat:`, `fix:`, `refactor:`, `docs:`, `test:` + référence issue
+- Commits : Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`)
 - Co-author IA : `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>`
-- UI/UX en français, code en anglais
-- Conventions de nommage à confirmer avec la stack choisie (par défaut : camelCase fonctions/variables, PascalCase composants/classes, kebab-case fichiers)
+- **camelCase** fonctions/variables, **PascalCase** classes/types/composants, **kebab-case** fichiers d'aventures et IDs
+- Tests : un fichier `*.test.ts` par module testé sous `tests/`
+- UI en français, identifiants en anglais ou français selon cohérence du module
