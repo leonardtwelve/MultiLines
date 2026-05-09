@@ -1,7 +1,6 @@
 # Specs détaillées — M1 P0
 
-> ⚠️ **Note sur les références à `DECISIONS.md`**
-> Ces specs référencent des décisions numérotées (D2, D3, D6, D7, D8) qui doivent vivre dans un `docs/DECISIONS.md` à créer. Ce fichier n'existe pas encore — son écriture peut accompagner la SPEC P0-1 (puisque c'est elle qui matérialise D2, D7, D8). Les autres décisions (D3 seuils de couverture dans P0-2, D6 AnimationManager) attendent leur tour.
+> Les références à `DECISIONS.md` (D1 → D8) pointent vers [`docs/DECISIONS.md`](./DECISIONS.md) (Architecture Decision Records du projet).
 
 > Ces specs sont prêtes à être passées à Claude Code, une par une.
 > Chaque spec référence les décisions de `DECISIONS.md`.
