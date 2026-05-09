@@ -5,17 +5,21 @@ import { PlayerManager } from '../players/PlayerManager';
 import { TurnSystem } from '../players/TurnSystem';
 import { SaveManager } from '../persistence/SaveManager';
 import { AudioManager } from '../audio/AudioManager';
+import type { PrivateView } from '../ui/PrivateView';
+import { DomPrivateView } from '../ui/DomPrivateView';
 
 export interface GameEngineConfig {
   parent: HTMLElement;
   width: number;
   height: number;
+  /** PrivateView injectable (par défaut : DomPrivateView monté sur document.body). */
+  privateView?: PrivateView;
 }
 
 /**
  * Orchestrateur du moteur générique. Détient les services partagés (joueurs, tour,
- * sauvegarde, audio, événements) et démarre Phaser une fois les scènes enregistrées
- * par l'aventure courante.
+ * sauvegarde, audio, événements, vue privée) et démarre Phaser une fois les scènes
+ * enregistrées par l'aventure courante.
  */
 export class GameEngine {
   readonly events = new EventBus();
@@ -24,6 +28,7 @@ export class GameEngine {
   readonly turns: TurnSystem;
   readonly save = new SaveManager();
   readonly audio = new AudioManager();
+  readonly privateView: PrivateView;
 
   private game: Phaser.Game | null = null;
   private readonly config: GameEngineConfig;
@@ -31,6 +36,7 @@ export class GameEngine {
   constructor(config: GameEngineConfig) {
     this.config = config;
     this.turns = new TurnSystem(this.players);
+    this.privateView = config.privateView ?? new DomPrivateView();
   }
 
   start(): void {
@@ -50,6 +56,7 @@ export class GameEngine {
   }
 
   stop(): void {
+    this.privateView.close();
     this.game?.destroy(true);
     this.game = null;
     this.events.clear();
