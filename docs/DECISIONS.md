@@ -526,6 +526,174 @@ Table complète dans `GAMEPLAY.md §7`.
 
 ---
 
+# Décisions design front — Casse de la Banque Lune
+
+> Décisions F1-F8 issues de la session design front (passe 1 — plateau interactif).
+>
+> Mêmes règles d'immutabilité que D1-D8 et G1-G10.
+> À lire conjointement avec [`FRONTEND.md`](./FRONTEND.md) qui détaille la mise en œuvre du plateau, des écrans et des composants.
+
+---
+
+## F1 — Schéma narratif assumé (plateau non réaliste)
+
+**Décidé le** : M1 (passe 1 design front)
+**Statut** : Acté
+
+### Décision
+Le plateau est un **plan tactique**, pas une carte fidèle. La topologie sert le gameplay et la lisibilité, pas le réalisme architectural. Z9 (toit) peut être en haut du plan sans qu'un escalier ne soit visible.
+
+### Pourquoi
+- Lisibilité d'ensemble prime sur réalisme.
+- Évite les débats sur la « vraie » disposition spatiale d'une banque.
+- Cohérent avec l'esthétique de maquette vivante (cf. `ART.md`).
+
+### Implications
+- Pas de proportions architecturales à respecter.
+- Les positions des zones servent la lecture, pas la cohérence d'un plan d'architecte.
+- Les connexions entre zones sont des **liens logiques**, pas des chemins parcourus.
+
+---
+
+## F2 — Zones discrètes avec sprites vivants
+
+**Décidé le** : M1
+**Statut** : Acté
+
+### Décision
+Le plateau est un **graphe de zones** (option C explorée en session). Pas de grille tile-based, pas de pathfinding. Chaque zone est un conteneur visuel ; les actions ciblent des zones ou des objets dans des zones, jamais des coordonnées.
+
+### Pourquoi
+- Pas de pathfinding nécessaire → simplicité d'implémentation, pas de moteur de mouvement.
+- **Zones = unités sémantiques** : faciles à nommer, à raconter, à animer.
+- Les animations d'ambiance s'inscrivent naturellement dans des boîtes connues.
+
+### Implications
+- Mouvement = transition visuelle (sprite glisse), pas physique.
+- Distance entre zones n'a pas de sens mécanique — adjacence binaire.
+- Pathfinding et grille tile-based **rejetés** pour cette aventure (et probablement les suivantes du même type).
+
+---
+
+## F3 — Fog partiel
+
+**Décidé le** : M1
+**Statut** : Acté
+
+### Décision
+Au démarrage de l'acte 2, **structure du plateau visible**, **contenus cachés** (overlay 60% noir sur les zones non-explorées). L'action *Reconnaissance* révèle les contenus.
+
+### Pourquoi
+- Évite l'écran « tout vide » peu engageant à la prise en main.
+- Conserve le mystère sur le contenu exact (Dossiers, butin, PNJ) → motivation à l'exploration.
+- L'action *Reconnaissance* a une utilité claire et tangible.
+
+### Implications
+- Z1 (Parvis) et Z2 (Hall) sont révélées par défaut au démarrage.
+- Les autres zones affichent leur structure (boîte + connexions) mais pas leur contenu interne.
+- Une fois explorée, une zone reste révélée pour la suite de la partie.
+
+---
+
+## F4 — Présence simultanée illimitée par zone
+
+**Décidé le** : M1
+**Statut** : Acté
+
+### Décision
+Plusieurs avatars peuvent être dans la même zone, **sans limite**.
+
+### Pourquoi
+- Coopération facilitée : deux rôles peuvent agir dans la même zone (ex: Hacker + Infiltré sur le coffre).
+- Évite les frustrations "tu ne peux pas entrer, c'est plein" qui poliue l'UX d'un jeu coop.
+- Simplifie l'UI (pas de gestion d'occupation par zone).
+
+### Implications
+- Sprites alignés dans la zone, légère randomisation pour éviter la superposition stricte.
+- Si 5 avatars dans la même zone, le rendu reste lisible (zones dimensionnées en conséquence).
+
+---
+
+## F5 — Déplacement libre avant action
+
+**Décidé le** : M1
+**Statut** : Acté
+
+### Décision
+Se déplacer entre zones **n'est pas une action**. Le joueur se déplace librement avant de choisir son action. Tour = (déplacement libre) + (action) + (résolution).
+
+### Pourquoi
+- 6-8 tours pour le casse — chaque action compte. Perdre un tour pour bouger est frustrant.
+- Le déplacement n'est pas tactique en lui-même (zones connectées simples).
+- La tactique passe par le **choix de l'action**, pas le mouvement.
+
+### Implications
+- Un joueur peut se déplacer même s'il ne fait aucune action ce tour-ci.
+- La distance n'a pas de coût ; seules les zones verrouillées limitent le mouvement.
+
+---
+
+## F6 — PNJ génériques sans individualité narrative
+
+**Décidé le** : M1
+**Statut** : Acté
+
+### Décision
+Les PNJ sont des **sprites génériques 32×32** avec 2-3 variantes visuelles (employé, garde, autre). Pas de noms, pas d'histoires individuelles.
+
+### Pourquoi
+- MVP : on évite la production narrative pour 5-10 PNJ par partie.
+- Le focus narratif est sur les 5 joueurs, pas sur le décor humain.
+- Simplifie les événements — pas de PNJ spécifiques à tracker au long cours.
+
+### Implications
+- Action *Persuader un PNJ* / *Détournement* : neutralise un PNJ, sans dialogue ni embranchement.
+- Pas de Wikipédia interne sur les PNJ.
+- Si une future aventure requiert des PNJ nommés, c'est une **nouvelle décision** (pas un renoncement à F6 pour le Casse).
+
+---
+
+## F7 — Layout fixe pour le MVP
+
+**Décidé le** : M1
+**Statut** : Acté
+
+### Décision
+La **topologie du plateau est fixe** d'une partie à l'autre. La variabilité vient des **contenus** : où est le butin, quels Dossiers, quels événements se déclenchent.
+
+### Pourquoi
+- Génération procédurale de layout = travail majeur (`spec/layout-banque` reportée en suite de M2).
+- Le Casse Lune est conçu autour d'un layout cohérent narrativement (Z1-Z9 nommées et reliées).
+- La rejouabilité vient du **game design** (rôles asymétriques, objectifs privés, événements), pas du plan.
+
+### Implications
+- Les 9 zones canoniques (Z1 Parvis → Z9 Toit) sont connues et fixes.
+- Le **contenu** de chaque zone est tiré au début de partie (algo à `spec/`, voir `FRONTEND.md §5` ligne 11).
+- Pas un blocage pour M2. Si lassitude observée en playtests, on rouvre une décision.
+
+---
+
+## F8 — Tout sur un écran sans scroll
+
+**Décidé le** : M1
+**Statut** : Acté
+
+### Décision
+**Résolution interne** 480×270, scalée 2x ou 3x à l'affichage final. Plateau + HUD haut + HUD bas visibles **simultanément**. Pas de scroll, pas de zoom, pas de mini-map.
+
+### Pourquoi
+- **Lisibilité d'ensemble** = principe directeur.
+- Scroll/zoom = friction sur écran partagé entre 3-5 joueurs autour d'une tablette.
+- Tablette en paysage = format idéal pour ce framing.
+
+### Implications
+- Layout serré : 9 zones doivent rentrer (résolution 480×210 utiles pour le plateau).
+- HUD haut = 24px (titre tour, joueur actif).
+- HUD bas = 36px (4 zones : tour, butin, alerte, temps).
+- Mini-map / vue d'ensemble alternative **rejetée** — superflu si tout est déjà visible.
+
+---
+
 ## Index des décisions
 
 | ID  | Sujet                                               | Statut |
@@ -548,6 +716,14 @@ Table complète dans `GAMEPLAY.md §7`.
 | G8  | Système de résolution chiffré (2d6 + tables)        | Acté   |
 | G9  | Pacte secret cadré en 3 templates                   | Acté   |
 | G10 | Objectifs privés vérifiés acte 3, récompense uniforme | Acté |
+| F1  | Schéma narratif assumé (plateau non réaliste)       | Acté   |
+| F2  | Zones discrètes avec sprites vivants                | Acté   |
+| F3  | Fog partiel                                         | Acté   |
+| F4  | Présence simultanée illimitée par zone              | Acté   |
+| F5  | Déplacement libre avant action                      | Acté   |
+| F6  | PNJ génériques sans individualité narrative         | Acté   |
+| F7  | Layout fixe pour le MVP                             | Acté   |
+| F8  | Tout sur un écran sans scroll                       | Acté   |
 
 ---
 

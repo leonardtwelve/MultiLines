@@ -1,7 +1,7 @@
 # GAMEPLAY — Le Casse de la Banque Lune
 
 > Spec game design faisant autorité pour la première aventure de Pixel Quests.
-> À lire avec `docs/DECISIONS.md` (D1-D8 + G1-G10) et `src/adventures/banque-lune/ART.md`.
+> À lire avec `docs/DECISIONS.md` (D1-D8 + G1-G10 + F1-F8), `docs/FRONTEND.md` (design front) et `src/adventures/banque-lune/ART.md`.
 >
 > Statut : **draft conception v2** — design tranché côté boucle, rôles, leviers, grille de résolution, Pacte secret, objectifs privés. Reste en spec/ : calcul du butin, jauge d'alerte chiffrée, événements, layout, scaling 3/4/5, garanties.
 
