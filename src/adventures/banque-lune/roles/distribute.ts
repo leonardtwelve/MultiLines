@@ -4,17 +4,17 @@ import { ROLES } from './index';
 /**
  * Composition d'équipe selon le nombre de joueurs.
  *
- * Aligné sur la DA bible (ART.md §4) : Conducteur·rice est "à l'extérieur" et
+ * Aligné sur la DA bible (ART.md §4) et G7 : Observateur (drone, "à l'extérieur")
  * n'apparaît qu'à 5 joueurs ; Négociateur·rice arrive à 4 joueurs.
  *
  * - 3 joueurs : minimum viable, intérieur uniquement (Hacker + Faussaire + Infiltré·e).
  * - 4 joueurs : + Négociateur·rice (renforce l'intérieur).
- * - 5 joueurs : + Conducteur·rice (extension extérieure).
+ * - 5 joueurs : + Observateur (extension extérieure via drone — G7).
  */
 const ROLES_BY_PLAYER_COUNT: Record<3 | 4 | 5, RoleId[]> = {
   3: ['hacker', 'faussaire', 'infiltre'],
   4: ['hacker', 'faussaire', 'infiltre', 'negociateur'],
-  5: ['hacker', 'faussaire', 'infiltre', 'negociateur', 'conducteur'],
+  5: ['hacker', 'faussaire', 'infiltre', 'negociateur', 'observateur'],
 };
 
 /**

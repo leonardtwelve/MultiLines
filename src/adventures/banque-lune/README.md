@@ -10,12 +10,12 @@ Aventure cyberpunk lunaire pour 3 à 5 joueurs, ~35 min, ton malicieux.
 - **Faussaire** (ambre) — falsifie badges, sceaux et signatures.
 - **Infiltré·e** (magenta) — agent double dans l'uniforme de la banque ; aide ou sabote.
 - **Négociateur·rice** (rose) — distrait, parlemente, désamorce.
-- **Conducteur·rice** (bleu glacé) — extérieur, prépare et exécute l'extraction.
+- **Observateur** (bleu glacé) — extérieur, prépare et exécute l'extraction.
 
 Composition selon le nombre de joueurs :
 - **3** : Hacker + Faussaire + Infiltré·e
 - **4** : + Négociateur·rice
-- **5** : + Conducteur·rice (le seul rôle "extérieur")
+- **5** : + Observateur (le seul rôle "extérieur")
 
 ## Statut
 Squelette jouable bout-en-bout (PoC). DA bible v1.0 figée — voir [`ART.md`](./ART.md).

@@ -1,4 +1,4 @@
-export type RoleId = 'hacker' | 'faussaire' | 'infiltre' | 'negociateur' | 'conducteur';
+export type RoleId = 'hacker' | 'faussaire' | 'infiltre' | 'negociateur' | 'observateur';
 
 export type RoomId = 'entree' | 'couloir' | 'coffre';
 
