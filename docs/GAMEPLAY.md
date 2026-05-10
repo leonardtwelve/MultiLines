@@ -114,7 +114,7 @@ Probabilités *avant modificateurs* :
 |---|---|---|---|
 | Faible | 58% | 33% | 8% |
 | Moyen | 17% | 42% | 42% |
-| Élevé | 8% | 25% | 67% |
+| Élevé | 8% | 33% | 58% |
 
 ### 4.3 — Modificateurs
 

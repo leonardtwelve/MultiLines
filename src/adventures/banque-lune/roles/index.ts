@@ -83,17 +83,20 @@ export const ROLES: Record<RoleId, Role> = {
       coffre: [honest('negocie-acces', "Négocier l'accès final", 'Code final obtenu.')],
     },
   },
-  conducteur: {
-    id: 'conducteur',
-    name: 'Conducteur·rice',
+  observateur: {
+    id: 'observateur',
+    name: 'Observateur',
     description:
-      "Casque sur les oreilles, télécommande du van à la main. Tu n'es pas dans la banque — tu prépares l'extraction depuis la rue.",
+      "Pilote un drone furtif depuis l'extérieur. Vue tactique du layout, reconnaissance, soutien à distance. Drone fragile (3 PV).",
     color: '#85b7eb',
     isInfiltre: false,
+    // Note: la structure room→actions est l'héritage du PoC. Refonte vers les
+    // 3 actions GAMEPLAY (Reconnaissance drone / Brouillage / Œil dans le ciel)
+    // prévue dans l'issue #38 (Stubs des 5 rôles).
     actionsByRoom: {
-      entree: [honest('prepare-extraction', "Préparer l'extraction", 'Véhicule positionné.')],
-      couloir: [honest('surveille-rue', 'Surveiller la rue', 'Aucune patrouille externe en vue.')],
-      coffre: [honest('avance-vehicule', 'Avancer le véhicule', "Voie d'évacuation prête.")],
+      entree: [honest('drone-reco-entree', 'Reconnaissance drone', "Drone survole l'entrée.")],
+      couloir: [honest('drone-brouillage', 'Brouillage', 'Capteurs du couloir aveuglés 1 tour.')],
+      coffre: [honest('drone-marque', 'Œil dans le ciel', 'Coffre marqué — bonus pour les autres.')],
     },
   },
 };

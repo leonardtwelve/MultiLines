@@ -31,11 +31,11 @@ describe('distributeRoles', () => {
     expect(roleIds.filter((id) => id === 'infiltre')).toHaveLength(1);
   });
 
-  it('ajoute Négociateur·rice et Conducteur·rice à 5 joueurs', () => {
+  it('ajoute Négociateur·rice et Observateur à 5 joueurs', () => {
     const result = distributeRoles(['p1', 'p2', 'p3', 'p4', 'p5'], seededRandom(99));
     const roleIds = [...result.values()].map((r) => r.id);
     expect(roleIds).toContain('negociateur');
-    expect(roleIds).toContain('conducteur');
+    expect(roleIds).toContain('observateur');
     expect(roleIds.filter((id) => id === 'infiltre')).toHaveLength(1);
   });
 
