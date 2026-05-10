@@ -1,10 +1,20 @@
 import type { Role, RoleId } from './types';
 import { ROLES } from './index';
 
+/**
+ * Composition d'équipe selon le nombre de joueurs.
+ *
+ * Aligné sur la DA bible (ART.md §4) : Conducteur·rice est "à l'extérieur" et
+ * n'apparaît qu'à 5 joueurs ; Négociateur·rice arrive à 4 joueurs.
+ *
+ * - 3 joueurs : minimum viable, intérieur uniquement (Hacker + Faussaire + Infiltré·e).
+ * - 4 joueurs : + Négociateur·rice (renforce l'intérieur).
+ * - 5 joueurs : + Conducteur·rice (extension extérieure).
+ */
 const ROLES_BY_PLAYER_COUNT: Record<3 | 4 | 5, RoleId[]> = {
-  3: ['hacker', 'ingenieur', 'infiltre'],
-  4: ['hacker', 'ingenieur', 'acrobate', 'infiltre'],
-  5: ['hacker', 'ingenieur', 'acrobate', 'stratege', 'infiltre'],
+  3: ['hacker', 'faussaire', 'infiltre'],
+  4: ['hacker', 'faussaire', 'infiltre', 'negociateur'],
+  5: ['hacker', 'faussaire', 'infiltre', 'negociateur', 'conducteur'],
 };
 
 /**

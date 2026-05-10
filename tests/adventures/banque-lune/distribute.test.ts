@@ -14,32 +14,32 @@ describe('distributeRoles', () => {
     expect(() => distributeRoles(['a', 'b', 'c', 'd', 'e', 'f'])).toThrow(InvalidPlayerCountError);
   });
 
-  it('attribue 3 rôles distincts à 3 joueurs, dont l\'infiltré', () => {
+  it("attribue 3 rôles distincts à 3 joueurs (Hacker + Faussaire + Infiltré·e)", () => {
     const result = distributeRoles(['p1', 'p2', 'p3'], seededRandom(42));
     expect(result.size).toBe(3);
     const roleIds = [...result.values()].map((r) => r.id);
     expect(new Set(roleIds).size).toBe(3);
     expect(roleIds).toContain('hacker');
-    expect(roleIds).toContain('ingenieur');
+    expect(roleIds).toContain('faussaire');
     expect(roleIds).toContain('infiltre');
   });
 
-  it('ajoute Acrobate à 4 joueurs', () => {
+  it('ajoute Négociateur·rice à 4 joueurs', () => {
     const result = distributeRoles(['p1', 'p2', 'p3', 'p4'], seededRandom(7));
     const roleIds = [...result.values()].map((r) => r.id);
-    expect(roleIds).toContain('acrobate');
+    expect(roleIds).toContain('negociateur');
     expect(roleIds.filter((id) => id === 'infiltre')).toHaveLength(1);
   });
 
-  it('ajoute Acrobate et Stratège à 5 joueurs', () => {
+  it('ajoute Négociateur·rice et Conducteur·rice à 5 joueurs', () => {
     const result = distributeRoles(['p1', 'p2', 'p3', 'p4', 'p5'], seededRandom(99));
     const roleIds = [...result.values()].map((r) => r.id);
-    expect(roleIds).toContain('acrobate');
-    expect(roleIds).toContain('stratege');
+    expect(roleIds).toContain('negociateur');
+    expect(roleIds).toContain('conducteur');
     expect(roleIds.filter((id) => id === 'infiltre')).toHaveLength(1);
   });
 
-  it('exactement 1 infiltré quel que soit le nombre de joueurs', () => {
+  it('exactement 1 infiltré·e quel que soit le nombre de joueurs', () => {
     for (const ids of [['a', 'b', 'c'], ['a', 'b', 'c', 'd'], ['a', 'b', 'c', 'd', 'e']]) {
       const result = distributeRoles(ids, seededRandom(1));
       const infiltres = [...result.values()].filter((r) => r.isInfiltre);

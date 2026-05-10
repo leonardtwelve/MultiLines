@@ -181,8 +181,6 @@ Chaque rôle a une **palette personnelle de 4 couleurs** (peau, vêtement princi
 
 > Note : Conducteur·rice est positionné·e à l'extérieur de la banque pour la majorité de la partie, donc moins visible mais avec une fonction stratégique forte. Sa palette tranche avec les 4 néons des autres rôles, justement parce qu'iel n'est pas dans la même action.
 
-> ⚠️ **Écart à noter** avec le PoC actuel (PR #10) : le PoC implémente Hacker / Ingénieure / Acrobate / Stratège / Infiltré. La DA bible v1.0 fige Hacker / Faussaire / Infiltré·e / Négociateur·rice / Conducteur·rice. Il faudra trancher (probablement aligner le code sur la DA, qui est plus aboutie narrativement) lors de l'implémentation de M2.
-
 ---
 
 ## 5. Typographie
