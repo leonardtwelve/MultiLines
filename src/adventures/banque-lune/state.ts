@@ -43,8 +43,8 @@ export function createRunState(players: Player[], playerRoles: Map<string, Role>
 }
 
 export const SCENE_KEYS = {
-  entree: 'banque-lune:entree',
-  couloir: 'banque-lune:couloir',
-  coffre: 'banque-lune:coffre',
+  /** Plateau principal de l'acte 2 (FRONTEND.md §2). */
+  board: 'banque-lune:board',
+  /** Écran de bilan acte 3. */
   result: 'banque-lune:result',
 } as const;

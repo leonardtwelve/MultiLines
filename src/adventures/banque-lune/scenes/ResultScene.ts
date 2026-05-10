@@ -8,6 +8,14 @@ const ROOM_LABELS: Record<RoomId, string> = {
   coffre: 'Coffre',
 };
 
+/**
+ * Bilan de fin de partie. Affiche le verdict (alarme ou non), récapitule les
+ * actions enregistrées dans le contexte, révèle l'infiltré·e.
+ *
+ * Statut M1 : la grille d'actions est vide (le flux 3-pièces du PoC a été
+ * remplacé par BoardScene). Le bilan reste informatif (verdict + infiltré).
+ * En M2, le récap intégrera Crédits, Dossiers, Pactes, votes acte 3.
+ */
 export class ResultScene extends Phaser.Scene {
   constructor() {
     super(SCENE_KEYS.result);
@@ -39,25 +47,25 @@ export class ResultScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    let y = 150;
-    for (const roomId of ['entree', 'couloir', 'coffre'] as RoomId[]) {
-      this.add
-        .text(60, y, ROOM_LABELS[roomId], {
-          fontFamily: 'monospace',
-          fontSize: '20px',
-          color: '#ffcc66',
-        })
-        .setOrigin(0, 0.5);
-      y += 30;
-
-      const perRoom = ctx.state.actionsTaken.get(roomId);
-      if (perRoom) {
+    let y = 160;
+    const hasActions = [...ctx.state.actionsTaken.values()].some((m) => m.size > 0);
+    if (hasActions) {
+      for (const roomId of ['entree', 'couloir', 'coffre'] as RoomId[]) {
+        const perRoom = ctx.state.actionsTaken.get(roomId);
+        if (!perRoom || perRoom.size === 0) continue;
+        this.add
+          .text(60, y, ROOM_LABELS[roomId], {
+            fontFamily: 'monospace',
+            fontSize: '20px',
+            color: '#ffcc66',
+          })
+          .setOrigin(0, 0.5);
+        y += 30;
         for (const [playerId, action] of perRoom) {
           const player = ctx.state.players.find((p) => p.id === playerId);
           if (!player) continue;
-          const line = `  • ${player.name} → ${action.outcome}`;
           this.add
-            .text(60, y, line, {
+            .text(60, y, `  • ${player.name} → ${action.outcome}`, {
               fontFamily: 'monospace',
               fontSize: '15px',
               color: action.sabotage ? '#dc2363' : player.color,
@@ -65,11 +73,26 @@ export class ResultScene extends Phaser.Scene {
             .setOrigin(0, 0.5);
           y += 22;
         }
+        y += 12;
       }
-      y += 12;
+    } else {
+      this.add
+        .text(
+          width / 2,
+          y,
+          '⚠ M1 — visualisation seule.\nActions, événements et calcul du butin viendront en M2.',
+          {
+            fontFamily: 'monospace',
+            fontSize: '14px',
+            color: '#7a85a5',
+            align: 'center',
+          },
+        )
+        .setOrigin(0.5);
+      y += 60;
     }
 
-    // Reveal infiltré
+    // Reveal infiltré·e
     let infiltreName = '???';
     for (const [pid, role] of ctx.state.playerRoles) {
       if (role.isInfiltre) {
@@ -78,7 +101,7 @@ export class ResultScene extends Phaser.Scene {
         break;
       }
     }
-    y += 10;
+    y += 20;
     this.add
       .text(width / 2, y, `L'infiltré·e était : ${infiltreName}`, {
         fontFamily: 'monospace',
