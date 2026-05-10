@@ -1,35 +1,40 @@
-type Handler<T> = (payload: T) => void;
+import type { GameEvent } from '../types/events';
+
+type EventType = GameEvent['type'];
+type PayloadFor<T extends EventType> = Extract<GameEvent, { type: T }>['payload'];
+type Handler<T extends EventType> = (payload: PayloadFor<T>) => void;
 
 /**
- * Pub/sub typé. Seul canal de communication autorisé entre une aventure et le moteur :
- * pas de référence directe, pas de couplage rigide. Voir docs/ARCHITECTURE.md.
+ * Pub/sub typé sur l'union discriminée `GameEvent` (voir D2).
+ * Seul canal de communication autorisé entre une aventure et le moteur :
+ * pas de référence directe, pas de couplage rigide.
  */
-export class EventBus<EventMap extends Record<string, unknown> = Record<string, unknown>> {
-  private readonly listeners = new Map<keyof EventMap, Set<Handler<unknown>>>();
+export class EventBus {
+  private readonly handlers = new Map<EventType, Set<(payload: unknown) => void>>();
 
-  on<K extends keyof EventMap>(event: K, handler: Handler<EventMap[K]>): () => void {
-    let set = this.listeners.get(event);
-    if (!set) {
-      set = new Set();
-      this.listeners.set(event, set);
-    }
-    set.add(handler as Handler<unknown>);
-    return () => this.off(event, handler);
-  }
-
-  off<K extends keyof EventMap>(event: K, handler: Handler<EventMap[K]>): void {
-    this.listeners.get(event)?.delete(handler as Handler<unknown>);
-  }
-
-  emit<K extends keyof EventMap>(event: K, payload: EventMap[K]): void {
-    const set = this.listeners.get(event);
+  emit<E extends GameEvent>(event: E): void {
+    const set = this.handlers.get(event.type);
     if (!set) return;
     for (const handler of set) {
-      (handler as Handler<EventMap[K]>)(payload);
+      handler(event.payload);
     }
+  }
+
+  on<T extends EventType>(type: T, handler: Handler<T>): () => void {
+    let set = this.handlers.get(type);
+    if (!set) {
+      set = new Set();
+      this.handlers.set(type, set);
+    }
+    set.add(handler as (payload: unknown) => void);
+    return () => this.off(type, handler);
+  }
+
+  off<T extends EventType>(type: T, handler: Handler<T>): void {
+    this.handlers.get(type)?.delete(handler as (payload: unknown) => void);
   }
 
   clear(): void {
-    this.listeners.clear();
+    this.handlers.clear();
   }
 }

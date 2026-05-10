@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 384" shape-rendering="crispEdges">
+  <rect width="1024" height="384" fill="#0a0e1a"/>
+  <rect x="0" y="0" width="1024" height="6" fill="#3affc7"/>
+  <rect x="0" y="378" width="1024" height="6" fill="#ff3a82"/>
+  <text x="512" y="180" text-anchor="middle" fill="#ffc83a" font-family="monospace" font-size="56" font-weight="bold">LE CASSE DE LA BANQUE LUNE</text>
+  <text x="512" y="240" text-anchor="middle" fill="#c93aff" font-family="monospace" font-size="22">2099 — secteur 07 — 35 min — 3 à 5 joueurs</text>
+  <text x="512" y="300" text-anchor="middle" fill="#7a85a5" font-family="monospace" font-size="16">cyberpunk · bluff · rôles asymétriques</text>
+</svg>
