@@ -298,18 +298,180 @@ export interface AdventureManifest {
 
 ---
 
+# Décisions game design — Casse de la Banque Lune
+
+> Ces décisions G1-G7 sont issues d'une session game design dédiée à la première aventure (Le Casse de la Banque Lune).
+>
+> Elles sont **aussi immutables que D1-D8** : aucune modification sans amendement formel (issue `[ADR]`, argumentation, mise à jour de ce document dans la même PR).
+>
+> À lire **conjointement avec** [`GAMEPLAY.md`](./GAMEPLAY.md) — qui détaille la mécanique entière issue de ces décisions et fait autorité sur les questions opérationnelles.
+
+---
+
+## G1 — Pilier mécanique
+
+**Décidé le** : M1 (session game design Casse Lune)
+**Statut** : Acté
+
+### Décision
+**Coop tendue → moment de bascule individuelle.**
+
+La coopération est sincère pendant tout le casse (acte 1 + acte 2). La trahison n'est techniquement possible qu'à l'acte 3, via un vote secret simultané.
+
+### Pourquoi
+- Évite l'impasse sociale du traître caché à la *Loup-Garou* qui empoisonne toute discussion d'équipe.
+- Concentre la dramatisation sur **un seul moment** (l'acte 3) au lieu de la diluer.
+- Permet à des joueurs occasionnels de profiter du casse sans paranoïa permanente.
+
+### Implications
+- Aucune action de joueur ne peut nuire à un autre joueur en actes 1-2 (cf. G6).
+- L'acte 3 doit être structurellement riche (pré-vote, vote, calcul) pour porter la charge dramatique — voir `GAMEPLAY.md §9`.
+- Pas de mécanique « joueur attaque joueur » en acte 2.
+
+---
+
+## G2 — Système de résolution
+
+**Décidé le** : M1
+**Statut** : Acté
+
+### Décision
+**Choix d'action déterministe, dé de risque sur la réussite.**
+
+Le joueur choisit son action ; le hasard ne porte que sur la réussite. Le dé est modifié par capacité du rôle, équipement, contexte, jauge d'alerte. Trois résultats : succès / succès partiel (avec coût) / échec.
+
+### Pourquoi
+- Le joueur doit toujours sentir qu'il a fait un vrai choix, même quand ça rate.
+- Le hasard sur la réussite donne du frisson sans frustrer (un échec est compréhensible).
+- Trois niveaux de résultat (vs binaire) ouvrent un espace de design pour les « succès coûteux » qui font monter l'alerte.
+
+### Implications
+- Pas d'action « carte piochée au hasard » dans le moteur du casse.
+- Les Crédits permettent de booster (relance, +1) — ressource gérée par le joueur.
+- La jauge d'alerte modifie les seuils de réussite : couplage gameplay/HUD.
+- Chiffrage exact à `spec/grille-resolution`.
+
+---
+
+## G3 — Acte 3 : vote secret simultané
+
+**Décidé le** : M1
+**Statut** : Acté
+
+### Décision
+**Vote secret simultané** (Loyal / Trahir) en clôture du casse. Tablette tournée vers chaque joueur successivement, révélation simultanée à la fin.
+
+### Pourquoi
+- Crée un moment de bascule maximal (le suspense atteint son pic au moment de la révélation).
+- Empêche les « votes par influence » (où un joueur s'aligne sur les votes déjà observés).
+- Le geste de la tablette tournée porte le secret physiquement.
+
+### Implications
+- L'UI « tablette tournée » (PrivateView) est utilisée 1× par joueur en acte 3.
+- Le vote n'est pas réversible une fois soumis.
+- Logique de calcul des gains côté core (configurations vote → parts) : voir `GAMEPLAY.md §9.3` et `spec/calcul-butin`.
+
+---
+
+## G4 — Objectifs privés tordus
+
+**Décidé le** : M1
+**Statut** : Acté
+
+### Décision
+**Chaque joueur reçoit en acte 1 un objectif privé légèrement tordu** — aligné avec la coop mais avec un twist personnel. Sa réussite donne un bonus de butin individuel ou un effet narratif au bilan.
+
+### Pourquoi
+- Donne à chaque joueur une boussole personnelle qui colore ses choix sans le forcer à trahir.
+- Le « twist » garde la place pour la trahison sans la rendre obligatoire.
+- Les objectifs trop alignés coop n'apportent aucune tension ; trop trahison-orientés tueraient la coop.
+
+### Implications
+- Table d'objectifs ≥30 à concevoir (voir `spec/objectifs-prives`).
+- Chaque objectif doit être **vérifiable mécaniquement** par le moteur en fin de partie.
+- Le calcul des gains acte 3 prend en compte la réussite ou l'échec de l'objectif privé.
+
+---
+
+## G5 — Tablette tournée occasionnelle
+
+**Décidé le** : M1
+**Statut** : Acté
+
+### Décision
+**Usage occasionnel** : 3-5 fois par partie sur événements de rôle, plus la distribution des objectifs (acte 1, 1× par joueur) et le vote (acte 3, 1× par joueur). **Pas systématique.**
+
+### Pourquoi
+- Trop fréquent → friction physique pénible (tablette qui tourne en permanence).
+- Trop rare → la dramaturgie du geste se perd.
+- Le geste lui-même devient un signal narratif : « la tablette bouge, quelque chose se passe ».
+
+### Implications
+- Volume cible : **~5-7 manipulations par joueur** sur l'ensemble d'une partie.
+- L'engine doit supporter un PrivateView interruptible et chaînable (déjà en place via `DomPrivateView`).
+- Pas de pattern « tablette tournée à chaque tour » dans les designs futurs.
+
+---
+
+## G6 — Coop sincère stricte pendant le casse
+
+**Décidé le** : M1
+**Statut** : Acté
+
+### Décision
+Pendant **tout l'acte 2**, la coopération est sincère stricte. **Aucune trahison n'est possible techniquement.** Le moteur ne propose pas d'action « voler à un coéquipier » ou similaire.
+
+### Pourquoi
+- Garantit le pilier G1 (la coop tient pendant le casse).
+- Évite que le bluff polluerait toutes les discussions, dévalorisant les conversations stratégiques.
+- Les Crédits/Dossiers permettent de **préparer** la trahison sans la commettre — tension sans toxicité.
+
+### Implications
+- Pas de PvP en acte 2.
+- Le butin amassé alimente un **pot commun**, pas des poches individuelles.
+- Les leviers (Crédits, Dossiers) ne peuvent pas être utilisés contre des coéquipiers en acte 2 — leur dimension compétitive ne s'active qu'à l'acte 3.
+
+---
+
+## G7 — 5e rôle = Observateur (drone)
+
+**Décidé le** : M1
+**Statut** : Acté
+
+### Décision
+Le 5e rôle (à 5 joueurs) est l'**Observateur**, pilote d'un drone furtif depuis l'extérieur. Remplace le Conducteur initialement prévu.
+
+### Pourquoi
+- Le Conducteur « extérieur statique » ne participait pas vraiment au casse — frustrant pour le joueur qui l'incarnait.
+- L'Observateur a une présence active via son drone (sprite distinct 32×32) et des actions complémentaires (reco, brouillage, marquage).
+- Sa **tension propre** (drone fragile à 3 PV) crée un mini-jeu de gestion du risque intéressant.
+
+### Implications
+- Sprite drone 32×32 + jauge intégrité (3 PV) à intégrer (voir `ART.md §2.3`).
+- Code rôle « conducteur » a été supprimé / remplacé dans PR #18 (alignement DA).
+- L'Observateur garde sa **vue tactique** (capacité passive) même si son drone est détruit — assure son utilité jusqu'au bout.
+
+---
+
 ## Index des décisions
 
-| ID  | Sujet                       | Statut |
-|-----|-----------------------------|--------|
-| D1  | Co-location des tests       | Acté   |
-| D2  | Format des événements       | Acté   |
-| D3  | Stratégie de couverture     | Acté   |
-| D4  | Workflow Git                | Acté   |
-| D5  | Organisation des assets     | Acté   |
-| D6  | Stratégie d'animations      | Acté   |
-| D7  | State management            | Acté   |
-| D8  | Format du manifest          | Acté   |
+| ID  | Sujet                                               | Statut |
+|-----|-----------------------------------------------------|--------|
+| D1  | Co-location des tests                               | Acté   |
+| D2  | Format des événements                               | Acté   |
+| D3  | Stratégie de couverture                             | Acté   |
+| D4  | Workflow Git                                        | Acté   |
+| D5  | Organisation des assets                             | Acté   |
+| D6  | Stratégie d'animations                              | Acté   |
+| D7  | State management                                    | Acté   |
+| D8  | Format du manifest                                  | Acté   |
+| G1  | Pilier mécanique (coop tendue → bascule)            | Acté   |
+| G2  | Système de résolution (choix + dé de risque)        | Acté   |
+| G3  | Acte 3 : vote secret simultané                      | Acté   |
+| G4  | Objectifs privés tordus                             | Acté   |
+| G5  | Tablette tournée occasionnelle                      | Acté   |
+| G6  | Coop sincère stricte pendant le casse               | Acté   |
+| G7  | 5e rôle = Observateur (drone)                       | Acté   |
 
 ---
 
