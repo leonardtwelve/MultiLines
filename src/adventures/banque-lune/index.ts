@@ -1,5 +1,6 @@
 import type { Adventure } from '../../core/types/adventure';
 import type { GameEngine } from '../../core/engine/GameEngine';
+import type { GameState } from '../../core/state/GameState';
 import { banqueLuneManifest } from './manifest';
 import { distributeRoles } from './roles/distribute';
 import { EntreeScene } from './scenes/EntreeScene';
@@ -20,7 +21,7 @@ export const banqueLuneAdventure: Adventure & {
 } = {
   manifest: banqueLuneManifest,
 
-  /** Doit être appelé AVANT engine.start(), pour passer le callback de fin de partie. */
+  /** Doit être appelé AVANT init() pour passer le callback de fin de partie. */
   configure(options: BanqueLuneStartOptions): void {
     pendingOptions = options;
   },
@@ -49,6 +50,8 @@ export const banqueLuneAdventure: Adventure & {
     }
 
     // Phase 2 — préparer l'état partagé entre scènes.
+    // NOTE : pour M1, banque-lune utilise un singleton interne (`state.ts`).
+    // Migration prévue vers `engine.store.dispatch(ADVENTURE_STATE_UPDATED)` en M2.
     const state = createRunState(players, playerRoles);
     setBanqueLuneContext({
       state,
@@ -67,8 +70,9 @@ export const banqueLuneAdventure: Adventure & {
     engine.scenes.add(ResultScene);
   },
 
-  start(): void {
-    // Phaser démarre la première scène enregistrée (Entrée).
+  start(_initialState: Readonly<GameState>): void {
+    // initialState ignoré pour l'instant — banque-lune lit son contexte via le singleton.
+    // Phaser démarre la première scène enregistrée (Entrée) automatiquement.
   },
 
   destroy(): void {

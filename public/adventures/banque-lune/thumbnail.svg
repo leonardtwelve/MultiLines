@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" shape-rendering="crispEdges">
+  <rect width="256" height="256" fill="#0a0e1a"/>
+  <rect x="16" y="16" width="224" height="224" fill="none" stroke="#3affc7" stroke-width="2"/>
+  <text x="128" y="100" text-anchor="middle" fill="#ffc83a" font-family="monospace" font-size="20" font-weight="bold">CASSE DE LA</text>
+  <text x="128" y="128" text-anchor="middle" fill="#ffc83a" font-family="monospace" font-size="20" font-weight="bold">BANQUE LUNE</text>
+  <text x="128" y="172" text-anchor="middle" fill="#c93aff" font-family="monospace" font-size="11">cyberpunk · 3-5 joueurs · 35 min</text>
+  <circle cx="128" cy="210" r="6" fill="#3affc7"/>
+  <circle cx="148" cy="210" r="6" fill="#ffc83a"/>
+  <circle cx="108" cy="210" r="6" fill="#c93aff"/>
+</svg>
