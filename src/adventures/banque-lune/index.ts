@@ -3,9 +3,7 @@ import type { GameEngine } from '../../core/engine/GameEngine';
 import type { GameState } from '../../core/state/GameState';
 import { banqueLuneManifest } from './manifest';
 import { distributeRoles } from './roles/distribute';
-import { EntreeScene } from './scenes/EntreeScene';
-import { CouloirScene } from './scenes/CouloirScene';
-import { CoffreScene } from './scenes/CoffreScene';
+import { BoardScene } from './scenes/BoardScene';
 import { ResultScene } from './scenes/ResultScene';
 import { clearBanqueLuneContext, createRunState, setBanqueLuneContext } from './state';
 
@@ -50,8 +48,8 @@ export const banqueLuneAdventure: Adventure & {
     }
 
     // Phase 2 — préparer l'état partagé entre scènes.
-    // NOTE : pour M1, banque-lune utilise un singleton interne (`state.ts`).
-    // Migration prévue vers `engine.store.dispatch(ADVENTURE_STATE_UPDATED)` en M2.
+    // NOTE M1 : singleton interne hérité du PoC. Migration vers
+    // engine.store.adventureState prévue avec l'arrivée des actions M2.
     const state = createRunState(players, playerRoles);
     setBanqueLuneContext({
       state,
@@ -63,16 +61,17 @@ export const banqueLuneAdventure: Adventure & {
       },
     });
 
-    // Phase 3 — enregistrer les scènes Phaser.
-    engine.scenes.add(EntreeScene);
-    engine.scenes.add(CouloirScene);
-    engine.scenes.add(CoffreScene);
+    // Phase 3 — enregistrer les scènes Phaser :
+    //   BoardScene = plateau principal acte 2 (visualisation seule en M1)
+    //   ResultScene = bilan acte 3
+    // Les actions, événements de tour et calcul de butin viennent en M2.
+    engine.scenes.add(BoardScene);
     engine.scenes.add(ResultScene);
   },
 
   start(_initialState: Readonly<GameState>): void {
-    // initialState ignoré pour l'instant — banque-lune lit son contexte via le singleton.
-    // Phaser démarre la première scène enregistrée (Entrée) automatiquement.
+    // initialState ignoré — banque-lune lit son contexte via le singleton (M1).
+    // Phaser démarre la première scène enregistrée (BoardScene).
   },
 
   destroy(): void {
