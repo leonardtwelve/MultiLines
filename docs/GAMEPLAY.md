@@ -1,241 +1,331 @@
-# Game design — Le Casse de la Banque Lune
+# GAMEPLAY — Le Casse de la Banque Lune
 
-> Document **faisant autorité** sur le game design du Casse Lune. À lire en premier par tout dev avant de toucher au gameplay.
+> Spec game design faisant autorité pour la première aventure de Pixel Quests.
+> À lire avec `docs/DECISIONS.md` (D1-D8 + G1-G7) et `src/adventures/banque-lune/ART.md`.
 >
-> Doit être lu conjointement avec [`DECISIONS.md`](./DECISIONS.md) §G1-G7 (décisions structurantes) et [`../src/adventures/banque-lune/ART.md`](../src/adventures/banque-lune/ART.md) (DA bible).
->
-> Toute valeur chiffrée (faces de dé, seuils, durées exactes, montants) est volontairement absente. Elle vit dans les issues `spec/game-design` listées en section finale [🔲 À spécifier](#-à-spécifier).
+> Statut : **draft conception** — design tranché côté boucle, rôles, leviers. Chiffrage et tables détaillées encore en spec/ (cf. section finale).
 
 ---
 
 ## 1. Pilier mécanique
 
-> **Coop tendue → moment de bascule individuelle.** (G1)
+> **Pendant tout le casse, vous êtes une équipe — et votre intérêt est *réellement* de réussir ensemble. Mais au moment du partage, chacun va devoir choisir entre fair-play et trahison, et personne ne sait à l'avance qui fera quoi.** *(G1)*
 
-Le casse se joue en coopération **sincère** pendant tout l'acte 2 (G6). La trahison n'est pas envisageable techniquement avant l'acte 3 — c'est un choix structurel, pas une carence d'outillage.
+Le ciment de la première moitié, c'est que **la coop est sincère** *(G6)*. Pas de traître caché à la Loup-Garou. La tension monte parce que vous *savez* que la trahison est possible à la fin, mais elle n'est encore décidée par personne.
 
-L'expérience cible : on transpire ensemble pendant 25 minutes, puis le cœur du jeu se révèle au moment du partage final. Le vote d'extraction (G3) cristallise toutes les tensions accumulées.
+**Conséquence design** : aucune action de joueur ne peut nuire à un autre joueur pendant les actes 1 et 2. Tout effet "compétitif" se cristallise à l'acte 3.
 
----
-
-## 2. Boucle de jeu — 3 actes, 30-45 min
-
-### Acte 1 — Briefing (3-5 min)
-
-1. Sélection des rôles (couleur du HUD = couleur du rôle, voir [ART.md §3](../src/adventures/banque-lune/ART.md#3-palette-de-couleurs)).
-2. Présentation de la cible : layout de banque variable d'une partie à l'autre — voir [`spec/layout-banque`](#-à-spécifier).
-3. Distribution des objectifs privés : tablette tournée vers chaque joueur (voir §[5. Information privée](#5-information-privée--trois-couches)).
-4. Plan d'attaque ouvert : 60 secondes de discussion libre, sans contrainte.
-
-### Acte 2 — Le casse (20-30 min, 6-8 tours)
-
-Chaque tour suit ce rythme strict :
-
-1. **Planification ouverte** (60-90s, tous joueurs, pas de joueur actif) — discussion libre, lecture du plateau.
-2. **Actions séquentielles** (~30s par joueur, ordre = ordre des rôles) :
-   1. Choix d'action (parmi les 3 actions du rôle — voir §[4. Rôles](#4-les-5-rôles)).
-   2. Dé de risque modifié par capacité, équipement, contexte, jauge d'alerte (voir §[3. Système de résolution](#3-système-de-résolution)).
-   3. Résultat : succès / succès partiel (avec coût) / échec.
-   4. Optionnel : événement de rôle qui demande une décision privée → tablette tournée (G5, occasionnel : 3-5 fois par partie).
-3. **Événement de tour** révélé à tous (tiré ou scripté selon la jauge d'alerte — voir [`spec/evenements`](#-à-spécifier)).
-4. **Mise à jour de la jauge d'alerte** (visible de tous).
-
-**Conditions de fin de l'acte 2** : objectif coop atteint **OU** jauge d'alerte au max → passage à l'extraction.
-
-### Acte 3 — L'extraction & le partage (5-8 min)
-
-1. **Récap du butin** : contributions individuelles, pot commun, valeurs estimées (voir [`spec/calcul-butin`](#-à-spécifier)).
-2. **Tablette tournée vers chaque joueur** (G5) :
-   - Confirmation de l'objectif privé (rempli ou non).
-   - Récap des leviers accumulés.
-   - Récap des conséquences possibles du vote.
-3. **Vote secret simultané** (G3) — tablette tournée, chaque joueur choisit `Loyal` ou `Trahir`.
-4. **Révélation simultanée** :
-   - **Tous loyaux** → split équitable, tous gagnent. Bonus narratif si l'objectif privé est rempli.
-   - **Un seul traître** → il rafle la part majoritaire, les autres se partagent les miettes.
-   - **Plusieurs traîtres** → ratio dégueu, parfois tous perdent (le casse "explose" narrativement).
-5. **Bilan narratif** : qui a réussi quoi, qui repart avec quoi, fin variable.
-
-> Pondération exacte des parts, effet des leviers sur le vote, formules de partage : voir [`spec/calcul-butin`](#-à-spécifier).
+**Source de tension pendant le casse** *(qui doit suffire sans trahison continue)* :
+- Jauge d'alerte qui monte (échec collectif possible)
+- Infos privées révélées progressivement (chacun en sait plus mais doit cacher)
+- Crédits et Dossiers accumulés (chacun *prépare* sa trahison potentielle sans la commettre)
+- Pactes du Négociateur (engagements oraux qui pourront être tenus ou rompus)
 
 ---
 
-## 3. Système de résolution
+## 2. Cadre de partie
 
-> **Choix d'action déterministe, dé de risque sur la réussite.** (G2)
-
-Aucun hasard sur le choix de l'action : chaque rôle a 3 actions disponibles, le joueur en sélectionne une.
-
-Le hasard ne porte que sur la **réussite** :
-
-1. Joueur choisit son action (capacité du rôle + 3 actions emblématiques).
-2. Dé de risque lancé, modifié par :
-   - Capacité passive du rôle.
-   - Équipement (M2+).
-   - Contexte (zone, alliés présents, état du PNJ ciblé).
-   - Niveau actuel de la jauge d'alerte.
-3. Trois résultats possibles :
-   - **Succès** : effet plein.
-   - **Succès partiel** : effet partiel + coût (jauge d'alerte qui monte, ressource consommée, etc.).
-   - **Échec** : pas d'effet + conséquence négative (variable selon l'action).
-4. **Boost** : possibilité de dépenser des ressources (leviers ?) pour relancer ou modifier le dé.
-
-Chiffrage exact (taille du dé, table de modificateurs, coûts de boost, table des conséquences) → [`spec/grille-resolution`](#-à-spécifier).
+| | |
+|---|---|
+| **Joueurs** | 3 à 5 *(scaling à spécifier en spec/)* |
+| **Durée cible** | 30-45 min |
+| **Format** | écran partagé tablette en paysage |
+| **Acte 1** | Briefing — 3-5 min |
+| **Acte 2** | Le casse — 20-30 min, 6-8 tours |
+| **Acte 3** | L'extraction & le partage — 5-8 min |
 
 ---
 
-## 4. Les 5 rôles
+## 3. Boucle de jeu
 
-> Identité visuelle, palette individuelle et règles narratives : voir [ART.md §4](../src/adventures/banque-lune/ART.md#4-identité-des-5-rôles).
+### Acte 1 — Briefing
 
-| Rôle             | Couleur          | Action emblématique | Force unique                                      |
-|------------------|------------------|---------------------|---------------------------------------------------|
-| Hacker           | cyan `#3affc7`   | Surcharge           | Influence à distance + lecture fine de la jauge   |
-| Faussaire        | ambre `#ffc83a`  | Authentifier        | Seul à voir la vraie valeur du butin              |
-| Infiltré·e       | magenta `#c93aff`| Crochetage          | Seule présence physique dans la banque            |
-| Négociateur·rice | rose `#ff3a82`   | Pacte secret        | Magnétisme — modifie les dés, propose des pactes  |
-| Observateur      | bleu glacé `#85b7eb` | Œil dans le ciel | Vue tactique globale via drone (G7)               |
+1. **Sélection des rôles** : chaque joueur choisit ou se voit attribuer un rôle parmi les 5. Couleur HUD = couleur du rôle.
+2. **Présentation de la cible** : la Banque Lune se dévoile. Layout du soir variable d'une partie à l'autre *(génération à spécifier en spec/)*.
+3. **Distribution des objectifs privés** : tablette tournée vers chaque joueur à tour de rôle *(G5)*. Chacun reçoit son objectif **légèrement tordu** *(G4)*.
+4. **Plan d'attaque** : 60 secondes de discussion ouverte. Pas d'info privée échangée à ce stade — chacun bluffe déjà.
 
-Les actions sont décrites avec un niveau de risque qualitatif (faible / moyen / élevé). La traduction en valeur chiffrée vit dans [`spec/grille-resolution`](#-à-spécifier).
+### Acte 2 — Le casse
 
-### 🟢 Hacker — cyan `#3affc7`
+Chaque tour suit ce rythme :
 
-**Identité** : maîtrise des systèmes numériques. Influence à distance.
+```
+PLANIFICATION (60-90s, ouvert)
+  └─ Discussion libre. Personne ne joue. On décide qui fait quoi.
 
-**Capacité passive — Vision réseau** : consulte une fois par tour la jauge d'alerte avec un cran de granularité supplémentaire. Sait si un événement Sécurité approche.
+ACTIONS (séquentiel, ~30s/joueur)
+  └─ Chaque joueur, à son tour :
+     1. Choisit son action parmi celles disponibles à son rôle (G2)
+     2. Dé de risque : modifié par capacité du rôle, équipement, jauge d'alerte
+     3. Résultat : succès / succès partiel (avec coût) / échec
+     4. Optionnel : événement de rôle → tablette tournée
 
-| # | Action                  | Risque | Effet                                                                       |
-|---|-------------------------|--------|-----------------------------------------------------------------------------|
-| 1 | Intrusion système       | Moyen  | Désactive temporairement une caméra/capteur (1 tour).                       |
-| 2 | Collecte de données     | Faible | Récupère un levier (info compromettante).                                   |
-| 3 | **Surcharge** ⭐         | Élevé  | Court-circuite un système majeur (coffre, ascenseur, alarme).               |
+ÉVÉNEMENT DE TOUR (révélé à tous)
+  └─ Tiré ou scripté selon la jauge d'alerte
+     Ex: ronde de gardes, panne, témoin, opportunité
 
-**Synergie** : Infiltré·e.
+JAUGE D'ALERTE (mise à jour visible)
+  └─ Monte selon échecs, événements, actions risquées
+```
 
-### 🟡 Faussaire — ambre `#ffc83a`
+**Fin de l'acte 2** : déclenchée par **objectif coop atteint** OU **jauge d'alerte au max**. Dans les deux cas, on passe à l'extraction.
 
-**Identité** : maître des faux papiers, des tromperies physiques, de la valeur transformée.
+### Acte 3 — L'extraction & le partage
 
-**Capacité passive — Œil d'expert** : voit la vraie valeur du butin que les autres voient en estimation floue.
-
-| # | Action                  | Risque | Effet                                                                       |
-|---|-------------------------|--------|-----------------------------------------------------------------------------|
-| 1 | Faux ordre              | Faible | Génère un faux document qui débloque une porte ou trompe un PNJ.            |
-| 2 | Substitution            | Faible | Place un faux dans le coffre à la place d'un lot venant d'être récupéré. Le butin réel reste dans le pot commun, mais sa nature exacte (vraie valeur vs estimée) est cachée à tous sauf au Faussaire. Effet visible : « Faussaire a substitué ». **Ne vole rien** — crée du flou informationnel pour préparer la bascule de l'acte 3. |
-| 3 | **Authentifier** ⭐      | Faible | Évalue précisément un lot de butin. Révèle sa vraie valeur à lui seul (tablette tournée). Peut mentir aux autres. |
-
-**Synergie** : Négociateur·rice.
-
-### 🟣 Infiltré·e — magenta `#c93aff`
-
-**Identité** : présence physique dans la banque, accès aux zones interdites.
-
-**Capacité passive — Couverture** : ses actions ratées font monter la jauge d'alerte de moitié.
-
-| # | Action                  | Risque | Effet                                                                       |
-|---|-------------------------|--------|-----------------------------------------------------------------------------|
-| 1 | Reconnaissance          | Faible | Explore une nouvelle zone, révèle son contenu pour tous.                    |
-| 2 | Détournement de garde   | Moyen  | Occupe un PNJ pendant 1 tour, libère sa zone.                               |
-| 3 | **Crochetage** ⭐        | Moyen  | Ouvre un coffre/porte sécurisée physiquement (alternative au Hacker).       |
-
-**Synergie** : tous.
-
-**Tension propre** : à compléter — voir [`spec/tension-roles`](#-à-spécifier).
-
-### 🌹 Négociateur·rice — rose `#ff3a82`
-
-**Identité** : la voix, les deals. Manipule par la parole.
-
-**Capacité passive — Magnétisme** : peut, une fois par tour, modifier le résultat d'un dé d'un autre joueur de ±1, en dépensant un levier.
-
-| # | Action                  | Risque | Effet                                                                       |
-|---|-------------------------|--------|-----------------------------------------------------------------------------|
-| 1 | Persuader un PNJ        | Moyen  | Évite un événement Sécurité en parlant.                                     |
-| 2 | Marchandage             | Faible | Augmente la valeur d'un lot de butin déjà collecté.                         |
-| 3 | **Pacte secret** ⭐      | Faible | Tablette tournée. Propose un pacte privé à un autre joueur (ex : « si on vote tous deux Loyal, je te donne mon levier sur X »). Pacte tracké par le système — tenu ou rompu, conséquences au bilan final. |
-
-**Synergie** : Faussaire + Observateur.
-
-**Tension propre** : à compléter — voir [`spec/tension-roles`](#-à-spécifier).
-
-Mécanique précise du Pacte secret (engagement, traçage, conséquences) → [`spec/pacte-secret`](#-à-spécifier).
-
-### 🔵 Observateur — bleu glacé `#85b7eb`
-
-> Remplace le Conducteur initialement prévu (G7).
-
-**Identité** : pilote un drone furtif à l'intérieur de la banque depuis l'extérieur. Vue d'ensemble + reconnaissance + soutien à distance. Présent sur la maquette via un sprite drone distinct **32×32** (plus petit que les avatars humains 48×48).
-
-**Capacité passive — Vue tactique** : voit tout le layout révélé même si son drone n'y est pas. Sait où sont les PNJ et caméras à chaque tour.
-
-| # | Action                  | Risque | Effet                                                                       |
-|---|-------------------------|--------|-----------------------------------------------------------------------------|
-| 1 | Reconnaissance drone    | Faible | Déplace le drone, révèle une zone non explorée sans risque pour les avatars humains. |
-| 2 | Brouillage              | Moyen  | Zone large brièvement aveuglée (caméras + capteurs) pendant 1 tour. Drone peut être détecté. |
-| 3 | **Œil dans le ciel** ⭐  | Faible | Marque une cible (PNJ ou objet). Pendant 2 tours, toutes les actions des autres joueurs sur cette cible bénéficient d'un bonus. |
-
-**Tension propre** : le drone a une **jauge d'intégrité (3 PV)**. Chaque action moyennement risquée peut l'endommager. S'il est détruit, l'Observateur perd une partie de ses capacités jusqu'à fin de partie.
-
-**Synergie** : multiplicateur global.
+1. **Récap du butin** : combien chacun a contribué, quel est le pot commun.
+2. **Tablette tournée** vers chaque joueur : confirmation de l'objectif privé + Crédits + Dossiers accumulés. Le système rappelle les conséquences des votes possibles.
+3. **Phase pré-vote** (ordre libre) :
+   - Activation des Dossiers Identité (révélation indice partiel)
+   - Achat de garanties avec Crédits
+   - Déclenchement automatique des conséquences de Pactes secrets
+4. **Vote secret simultané** *(G3)* : tablette tournée vers chacun, choix *Loyal* ou *Trahir*.
+5. **Révélation simultanée** :
+   - Tous loyaux → split équitable, tout le monde gagne (bonus narratif si objectif privé rempli)
+   - Un seul traître → il rafle la part majoritaire, les autres se partagent les miettes
+   - Plusieurs traîtres → ratio dégueu, parfois ils perdent tous (le casse "explose" narrativement)
+6. **Bilan narratif** : qui a réussi son objectif privé, qui repart avec quoi, fin variable selon les votes.
 
 ---
 
-## 5. Information privée — trois couches
+## 4. Système de résolution
 
-| Couche                  | Acquis                  | Visible quand            | Détail                                                                  |
-|-------------------------|-------------------------|--------------------------|-------------------------------------------------------------------------|
-| Objectif privé          | Acte 1 (distribution)   | Jamais après distribution | Légèrement tordu, aligné coop avec twist (G4). Voir [`spec/objectifs-prives`](#-à-spécifier). |
-| Leviers de fin          | Acte 2 (collectés au fil du jeu) | Acte 3 (utilisation) | Photos compromettantes, codes, identités. **Inactifs pendant le casse**, donnent du pouvoir à l'acte 3. Voir [`spec/leviers`](#-à-spécifier). |
-| Capacité unique du rôle | Acte 1 (sélection)      | Connue de tous           | Asymétrique mais publique — pas vraiment cachée.                        |
+*(G2 — choix d'action + dé de risque modifié)*
 
-Toute consultation/manipulation d'info privée passe par la **tablette tournée** (G5, occasionnel — 3-5 fois par partie sur événements de rôle, plus la phase d'objectifs en acte 1 et le vote en acte 3).
-
----
-
-## 6. Coopération sincère stricte (G6)
-
-Pendant **tout l'acte 2**, la coopération est sincère stricte : aucune trahison technique possible. Cette contrainte est structurelle (le moteur ne propose pas d'action de trahison pendant le casse), pas comportementale.
-
-La trahison n'a qu'un seul lieu d'expression : le vote secret de l'acte 3 (G3).
-
-Implications :
-- Pas d'action « voler à un coéquipier » pendant l'acte 2.
-- Pas de combat PvP.
-- Le butin amassé alimente un **pot commun**, pas des poches individuelles.
-- Les leviers collectés donnent des prises **pour l'acte 3**, ils ne sont pas utilisables contre les coéquipiers en acte 2.
+- Le joueur **choisit son action** (pas de hasard sur le choix).
+- Le **dé de risque** détermine la réussite, modifié par : capacité passive du rôle, équipement, contexte, jauge d'alerte.
+- Trois résultats possibles : **succès** / **succès partiel** (avec coût) / **échec**.
+- Possibilité de **dépenser des Crédits pour booster** : relance, +1, etc.
+- Chiffrage exact (faces du dé, table de modificateurs, coûts) à spécifier en spec/.
 
 ---
 
-## 7. Tablette tournée (G5)
+## 5. Les 5 rôles
 
-Usage **occasionnel** : 3 à 5 fois par partie sur des événements de rôle, plus la phase de distribution des objectifs (acte 1) et le vote (acte 3).
+### Vue d'ensemble
 
-Cas d'usage typiques :
-- Distribution de l'objectif privé (acte 1, 1× par joueur).
-- Action emblématique avec révélation privée (ex : Authentifier, Pacte secret).
-- Événement de rôle déclenché par le résultat d'une action (ex : « le drone a vu quelque chose qu'il ne devrait pas »).
-- Confirmation de l'objectif et leviers à l'acte 3.
-- Vote secret final.
+| Rôle | Couleur | Action emblématique | Force unique | Tension propre |
+|---|---|---|---|---|
+| 🟢 Hacker | `#3affc7` cyan | Surcharge | Vision interne | — |
+| 🟡 Faussaire | `#ffc83a` ambre | Authentifier | Asymétrie info butin | — |
+| 🟣 Infiltré | `#c93aff` magenta | Crochetage | Échecs amortis | — |
+| 🌹 Négociateur | `#ff3a82` rose | Pacte secret | Modifie dés des autres | Pactes engagent au final |
+| 🔵 Observateur | `#85b7eb` bleu glacé | Œil dans le ciel | Vue globale | Drone fragile (3 PV) |
 
-Réalisation côté UI : `engine.privateView` (voir [ADVENTURES_GUIDE.md §5](./ADVENTURES_GUIDE.md#5-services-du-moteur-disponibles)). Ce composant est déjà implémenté côté core.
+**Principe d'asymétrie** : chaque rôle a la même *quantité* d'actions (3 actions principales + 1 capacité passive). Ce qui change, c'est ce que ces actions *font* dans le système. Pas de rôle "plus fort" qu'un autre, juste différent.
+
+### 🟢 Hacker
+
+- **Identité** : maîtrise des systèmes numériques. Voit ce que les autres ne voient pas. Influence à distance.
+- **Capacité passive — Vision réseau** : peut consulter une fois par tour la jauge d'alerte avec un cran de granularité supplémentaire. Sait si un événement Sécurité approche.
+- **Action 1 — Intrusion système** : désactive temporairement une caméra/capteur (1 tour). *Risque : Moyen.*
+- **Action 2 — Collecte de données** : récupère des Crédits, avec une chance (~30%) de produire un Dossier à la place. *Risque : Faible.* C'est la principale source de leviers de l'équipe.
+- **Action 3 — Surcharge** ⭐ *(emblématique)* : court-circuite un système majeur (coffre, ascenseur, alarme). Débloque une zone autrement inaccessible. *Risque : Élevé.*
+- **Synergie** : Infiltré.
+
+### 🟡 Faussaire
+
+- **Identité** : maître des faux papiers, des tromperies physiques, de la valeur transformée.
+- **Capacité passive — Œil d'expert** : voit la **vraie valeur** du butin que les autres voient en estimation floue. C'est sa force asymétrique pour l'acte 3.
+- **Action 1 — Faux ordre** : génère un faux document qui débloque une porte ou trompe un PNJ. *Risque : Faible.*
+- **Action 2 — Substitution** : au moment où l'équipe récupère un lot de butin, le Faussaire peut placer un faux dans le coffre à la place du vrai. **Le butin réel reste dans le pot commun.** Sa nature exacte (vraie valeur vs estimée) est cachée à tous sauf au Faussaire. Effet visible : "le Faussaire a substitué" est annoncé. *Risque : Faible.* **Cette action ne vole rien — elle crée du flou informationnel pour préparer la bascule de l'acte 3.**
+- **Action 3 — Authentifier** ⭐ *(emblématique)* : évalue précisément un lot de butin. Révèle sa vraie valeur à lui seul (tablette tournée). Peut mentir aux autres dessus. Sur certains coffres-forts spéciaux, peut révéler un Dossier. *Risque : Faible.*
+- **Synergie** : Négociateur.
+
+### 🟣 Infiltré·e
+
+- **Identité** : présence physique dans la banque, accès aux zones interdites, mouvement.
+- **Capacité passive — Couverture** : ses actions ratées font monter la jauge d'alerte de moitié.
+- **Action 1 — Reconnaissance** : explore une nouvelle zone de la banque, révèle son contenu pour tous. Peut découvrir un Dossier abandonné dans certaines zones. *Risque : Faible.*
+- **Action 2 — Détournement de garde** : occupe un PNJ pendant un tour. Permet à d'autres joueurs d'agir sur sa zone sans risque. *Risque : Moyen.*
+- **Action 3 — Crochetage** ⭐ *(emblématique)* : ouvre un coffre/une porte sécurisée *physiquement* (sans Hacker). Plus lent mais ne dépend de personne. *Risque : Moyen.*
+- **Synergie** : tous.
+
+### 🌹 Négociateur·rice
+
+- **Identité** : la voix, les deals, l'humain. Manipule par la parole, pas par la technique.
+- **Capacité passive — Magnétisme** : peut, une fois par tour, modifier le résultat d'un dé d'un autre joueur de ±1, en dépensant 1 Crédit.
+- **Action 1 — Persuader un PNJ** : évite un événement Sécurité (ronde, témoin) en parlant. *Risque : Moyen.*
+- **Action 2 — Marchandage** : augmente la valeur d'un lot de butin déjà collecté (négocier sa revente future). *Risque : Faible.*
+- **Action 3 — Pacte secret** ⭐ *(emblématique)* : tablette tournée, propose un **pacte privé** à un autre joueur. Le pacte est tracké par le système — tenu ou rompu, ça a des conséquences au bilan final. *Risque : Faible.* **Mécanique précise à spécifier en spec/.**
+- **Synergie** : Faussaire + Observateur.
+
+### 🔵 Observateur
+
+- **Identité** : pilote un drone furtif à l'intérieur de la banque depuis l'extérieur. Vue d'ensemble + reconnaissance + soutien à distance. Présent sur la maquette via un sprite drone distinct (32×32, plus petit que les avatars humains 48×48).
+- **Capacité passive — Vue tactique** : voit tout le layout révélé même si son drone n'y est pas. Sait où sont les PNJ et caméras à chaque tour.
+- **Action 1 — Reconnaissance drone** : déplace le drone, révèle une zone non explorée *sans risque pour les avatars humains*. *Risque : Faible.*
+- **Action 2 — Brouillage** : le drone émet un brouillage sur une zone : caméras et capteurs y sont aveugles pendant 1 tour. Différent du Hacker (qui désactive un point précis) : l'Observateur couvre une zone large mais brièvement. *Risque : Moyen.* Le drone peut être détecté.
+- **Action 3 — Œil dans le ciel** ⭐ *(emblématique)* : marque une cible (PNJ ou objet). Pendant 2 tours, toutes les actions des autres joueurs concernant cette cible bénéficient d'un bonus. Sur un PNJ, peut produire un Dossier de type Identité. *Risque : Faible.*
+- **Tension propre** : son drone a une **jauge d'intégrité** (3 PV). Chaque action moyennement risquée peut l'endommager. S'il est détruit, l'Observateur perd une partie de ses capacités jusqu'à la fin de la partie.
+- **Synergie** : multiplicateur global.
 
 ---
 
-## 🔲 À spécifier
+## 6. Information privée
 
-Ce qui reste à concevoir avant que le développement puisse aboutir. Une **issue `spec/game-design`** par sujet, à traiter en M2.
+Trois couches d'info privée structurent le jeu.
 
-| Sujet                                                         | Issue                                              | Bloque                                       |
-|---------------------------------------------------------------|----------------------------------------------------|----------------------------------------------|
-| Système de leviers — nature, obtention, usage acte 3         | [`spec/leviers`](#-à-spécifier)                    | Implémentation actions, calcul butin, vote   |
-| Grille de résolution chiffrée du dé de risque                | [`spec/grille-resolution`](#-à-spécifier)          | Implémentation système de résolution         |
-| Table d'objectifs privés tordus (≥30, règles de tirage)      | [`spec/objectifs-prives`](#-à-spécifier)           | Distribution acte 1, calcul bonus narratif   |
-| Mécanique détaillée du Pacte secret                          | [`spec/pacte-secret`](#-à-spécifier)               | Action 3 du Négociateur·rice                 |
-| Jauge d'alerte — paramètres numériques, seuils, événements   | [`spec/jauge-alerte`](#-à-spécifier)               | HUD jauge, fin acte 2, modificateurs dé      |
-| Table d'événements de tour (≥20)                             | [`spec/evenements`](#-à-spécifier)                 | Phase 3 du tour acte 2                       |
-| Layout de banque — génération, variabilité                   | [`spec/layout-banque`](#-à-spécifier)              | Rendu de la maquette, exploration            |
-| Calcul du butin — composition, valeur, partage               | [`spec/calcul-butin`](#-à-spécifier)               | Acte 3 partage, formules de vote             |
-| Scaling 3/4/5 joueurs — rôles obligatoires, ajustements      | [`spec/scaling-joueurs`](#-à-spécifier)            | Setup, équilibrage                           |
-| Tension propre Infiltré·e et Négociateur·rice                | [`spec/tension-roles`](#-à-spécifier)              | Profondeur des deux rôles                    |
+### 6.1 — Objectif privé
 
-> Les liens cliquables vers les issues GitHub seront mis à jour quand les issues seront créées (étape 3 du chantier de formalisation).
+*(G4 — légèrement tordu)*
+
+- Révélé en début d'acte 1 (tablette tournée), jamais montré aux autres pendant le casse.
+- Aligné avec la coop, mais avec un twist personnel.
+- Exemples : "ramène au moins X de butin", "récupère spécifiquement le coffre 3", "le Hacker doit avoir moins de Crédits que toi à la fin".
+- Sa réussite donne un bonus de butin individuel ou un effet narratif au bilan.
+- Table d'objectifs et règles de tirage à spécifier en spec/.
+
+### 6.2 — Crédits *(ressource générique)*
+
+Compteur numérique simple par joueur. Représente narrativement *"de la pression accumulée, des petits secrets, des micro-leviers"*.
+
+**Visibilité** : son total est visible **uniquement par le joueur** sur son HUD personnel (tablette tournée pour consultation rare).
+
+**Obtention** *(barème indicatif, à finaliser en playtesting)* :
+
+| Source | Crédits |
+|---|---|
+| Action réussie (succès complet) | +1 |
+| Action *Collecte de données* du Hacker (réussie) | +2 |
+| Succès partiel | +0 |
+| Échec d'action | -1 si solde ≥ 3, sinon 0 |
+| Événement de tour favorable | +1 à +2 |
+| Objectif coop intermédiaire atteint | +1 pour tous |
+
+**Volume cible** : 4-8 Crédits par joueur en fin de casse.
+
+**Usages** :
+- Acte 2 : booster un dé (relance, +1), alimenter le Magnétisme du Négociateur (1 Crédit), payer un Pacte secret.
+- Acte 3 : acheter des **garanties** ("je dépense 3 Crédits pour me protéger d'une trahison" — coût exact à spécifier).
+- **Les Crédits non dépensés à l'acte 3 sont perdus.** Crée la tension économiser vs dépenser tout de suite.
+
+### 6.3 — Dossiers *(leviers narratifs)*
+
+Cartes typées nominatives. Plus rares (1-2 par joueur sur la partie, parfois 0). Chaque Dossier a une **cible** (joueur ou PNJ) et un **type**.
+
+| Type | Cible | Effet acte 3 |
+|---|---|---|
+| 📸 **Compromettant** | Joueur | Si tu votes Trahir et que la cible vote Loyal, tu prends une part supplémentaire d'elle ("chantage") |
+| 🔑 **Accès** | PNJ ou banque | Donne un bonus de butin personnel si tu votes Loyal (récompense l'ancrage coop) |
+| 🎭 **Identité** | Joueur | Active avant le vote : révèle la **cible** de l'objectif privé du joueur visé (ex: "son objectif concerne le Hacker"), pas la condition exacte. Le bluff sur la condition reste possible. |
+
+**Asymétrie intentionnelle** : Compromettant favorise la trahison, Accès favorise la loyauté, Identité crée du chaos public sans tout révéler.
+
+**Obtention** :
+- Hacker — *Collecte de données* : ~30% de chance de produire un Dossier (type aléatoire) au lieu de Crédits.
+- Faussaire — *Authentifier* sur certains coffres-forts spéciaux.
+- Infiltré — *Reconnaissance* dans certaines zones (Dossiers abandonnés).
+- Observateur — *Œil dans le ciel* sur un PNJ : peut produire un Dossier Identité.
+- Événements de tour scriptés.
+- Négociateur — pas de génération directe, mais peut en demander dans un Pacte secret.
+
+**Volume cible** : 1-2 Dossiers par joueur en fin de partie (parfois 0). C'est un *bonus narratif*, pas un *pivot mécanique*.
+
+**Note design — Dossier Identité** : la révélation est *partielle* (cible uniquement, pas la condition) pour préserver le bluff au vote final. Une 2e Identité sur la même cible peut révéler un *aspect* de la condition (ex: "ça concerne ses Crédits") sans préciser plus. Comportement précis à spécifier en spec/.
+
+---
+
+## 7. Tablette tournée
+
+*(G5 — occasionnel : 3-5 fois par partie)*
+
+La tablette tournée est un **événement narratif**. Quand elle bouge, les autres joueurs voient qu'une info est révélée, mais pas laquelle. La suspicion monte par le geste lui-même.
+
+**Cas d'usage** :
+- Distribution des objectifs privés (acte 1, une fois par joueur)
+- Événement de rôle pendant l'acte 2 (3-5 fois par partie sur l'ensemble des joueurs, variables selon les rôles joués et les actions choisies)
+- Phase pré-vote acte 3 (consultation Crédits + Dossiers)
+- Vote final (acte 3, une fois par joueur)
+- Pacte secret du Négociateur (déclenché par action)
+- Authentifier du Faussaire (sur action)
+
+Total moyen sur une partie : ~5-7 manipulations par joueur.
+
+---
+
+## 8. Jauge d'alerte
+
+Indicateur global et permanent de la tension du casse. Visible en HUD bas de l'écran.
+
+**Fonctions** :
+- Pilote l'éclairage global *(cf. ART.md — cool / tendu / chaud / critique)*.
+- Modifie les seuils de réussite des dés de risque (plus la jauge est haute, plus c'est dur).
+- Déclenche des événements de tour à seuils.
+- Si elle atteint le max → fin forcée de l'acte 2 → passage à l'extraction.
+
+**Sources de montée** *(à chiffrer en spec/)* :
+- Échecs d'actions (sauf pour l'Infiltré, capacité passive)
+- Actions risquées (Surcharge du Hacker notamment)
+- Événements de tour défavorables
+- Détection du drone de l'Observateur
+
+**Sources de descente** :
+- Action *Persuader un PNJ* du Négociateur (sur événement Sécurité réussi)
+- Certains événements favorables
+- Action *Préparer l'extraction* (effet réservé à des actions de soutien encore à concevoir)
+
+Paramètres numériques à spécifier en spec/.
+
+---
+
+## 9. Acte 3 en détail — la bascule
+
+C'est le moment qui doit être **inoubliable**. Trois sous-phases :
+
+### 9.1 — Phase pré-vote (ordre libre)
+
+Chaque joueur, à tour de rôle, peut :
+
+1. **Activer un Dossier Identité** sur une cible → révélation indice partiel à tous.
+2. **Acheter une garantie** avec ses Crédits → protection partielle contre la trahison (effet exact à spécifier).
+3. **Réclamer le respect d'un Pacte secret** non encore déclenché.
+
+Phase plafonnée en temps (~2 min) pour éviter l'enlisement.
+
+### 9.2 — Vote secret simultané
+
+Tablette tournée vers chacun, à la suite. Choix *Loyal* ou *Trahir*. Aucun retour visible aux autres. Une fois tous les votes récoltés → révélation simultanée.
+
+### 9.3 — Calcul des gains et bilan
+
+Algorithme général :
+
+1. Base selon la configuration des votes (tous loyaux / un traître / plusieurs).
+2. Modulation par les Dossiers Compromettant et Accès activés.
+3. Modulation par les garanties achetées.
+4. Application des conséquences de Pactes secrets tenus ou rompus.
+5. Vérification de chaque objectif privé → bonus narratif si rempli.
+
+Formules précises à spécifier en spec/.
+
+---
+
+## 10. 🔲 À spécifier *(reste game design)*
+
+Ces points sont **conçus dans l'esprit** mais pas chiffrés ou détaillés. Chacun fait l'objet d'une issue `spec/game-design`.
+
+| # | Sujet | Description courte |
+|---|---|---|
+| 1 | Mécanique détaillée du Pacte secret | Engagement, traçage, types de pactes possibles, conséquences tenu/rompu |
+| 2 | Grille de résolution chiffrée du dé | Faces, modificateurs (capacités, alerte, équipement), coûts de boost |
+| 3 | Table des objectifs privés tordus | ≥30 objectifs, règles de tirage, anti-configurations injouables |
+| 4 | Jauge d'alerte chiffrée | Seuils numériques, déclenchement d'événements, conséquences précises |
+| 5 | Table d'événements de tour | Banque ≥20 événements, déclenchement selon jauge, effets |
+| 6 | Layout de banque | Génération, variabilité, contraintes d'équilibrage |
+| 7 | Calcul du butin | Composition d'un lot, fourchettes de valeur, formules de partage acte 3 |
+| 8 | Scaling 3/4/5 joueurs | Rôles obligatoires, ajustements de difficulté, équilibrage |
+| 9 | Tension propre Infiltré et Négociateur | Compléter (à ce stade, ces deux rôles sont un peu plats côté contrainte personnelle) |
+| 10 | Effet exact des garanties (acte 3) | Coût en Crédits, type de protection, interaction avec les Dossiers |
+
+---
+
+## 11. Liens
+
+- `docs/DECISIONS.md` — registre des décisions structurantes (D1-D8 + G1-G7)
+- `src/adventures/banque-lune/ART.md` — DA bible visuelle du Casse
+- `docs/ROADMAP.md` — jalons M1-M5
+- `docs/ADVENTURES_GUIDE.md` — contrat Adventure générique
+
+---
+
+*Fin du GAMEPLAY.md. Pour toute reprise de design, mettre à jour ce document en priorité — il fait autorité.*
