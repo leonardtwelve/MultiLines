@@ -453,6 +453,79 @@ Le 5e rôle (à 5 joueurs) est l'**Observateur**, pilote d'un drone furtif depui
 
 ---
 
+## G8 — Système de résolution chiffré (2d6 + tables)
+
+**Décidé le** : M1 (passe 2 game design)
+**Statut** : Acté
+
+### Décision
+**2d6 modifiés** comme dé de risque, avec **tables d'interprétation** par niveau de risque (faible / moyen / élevé) qui définissent les seuils succès / succès partiel / échec. Modificateurs plafonnés à ±4. Boost en Crédits standardisé (+1 = 1¢ avant jet, relance = 2¢, annuler échec critique = 3¢). Échec critique = **2 naturel** (1/36 ≈ 2.8%).
+
+Chiffrage complet dans `GAMEPLAY.md §4`.
+
+### Pourquoi
+- **Distribution en cloche** : modificateurs prévisibles, calibrage maîtrisé (ce qu'un d20 ne donne pas).
+- **Lisibilité visuelle** : deux dés qui roulent à l'écran, cohérent avec la maquette vivante.
+- **Référence familière** : Catan, jeux indé. Pas de courbe d'apprentissage tactile.
+- Permet d'ouvrir un espace de design pour les **succès partiels** avec 3 patterns documentés (succès+coût, succès limité, succès conditionnel).
+
+### Implications
+- L'implémentation du système de résolution générique (issue dev) prend la grille de §4 comme spec figée.
+- Les 15 actions des 5 rôles doivent chacune choisir leur pattern de succès partiel et leur effet d'échec critique (la liste précise reste à `spec/echec-critique`).
+- Le HUD doit afficher les 2d6 en clair (pas de masquage) — la transparence du jet est essentielle au sentiment de fairness.
+
+---
+
+## G9 — Pacte secret cadré en 3 templates
+
+**Décidé le** : M1 (passe 2 game design)
+**Statut** : Acté
+
+### Décision
+L'action *Pacte secret* du Négociateur·rice n'autorise **que 3 templates fixes** : 🤝 Pacte de loyauté / 💰 Échange direct / 🛡️ Protection de vote allégée. Pas de pacte verbal libre. Coût d'émission **1 Crédit**, limite **3 Pactes/partie**.
+
+Mécanique complète dans `GAMEPLAY.md §8`.
+
+### Pourquoi
+- Un pacte verbal libre est **invérifiable mécaniquement** par le moteur — le système ne peut pas tracer "tenu vs rompu" sans grille.
+- **3 templates couvrent les trois axes** stratégiques : engagement de vote (Loyauté), transaction marchande (Échange), filet de sécurité (Protection allégée).
+- Le coût de 1 Crédit empêche le **spam** de propositions tactiques. La limite de 3 par partie évite la saturation du dispositif.
+
+### Implications
+- Implémentation côté core : type `PactTemplate = 'loyalty' | 'exchange' | 'protection'`.
+- Le Pacte de Protection introduit un mécanisme d'**abstention au vote** (½ part Loyal) qui doit être pris en compte par `spec/calcul-butin`.
+- Les Pactes sont **révélés au bilan** (type, termes, tenu/rompu) — déclenche un moment narratif fort.
+- Pas de roadmap de templates supplémentaires en M2 — si besoin, nouvelle ADR.
+
+---
+
+## G10 — Objectifs privés vérifiés acte 3, récompense uniforme
+
+**Décidé le** : M1 (passe 2 game design)
+**Statut** : Acté
+
+### Décision
+- **Vérification** : à l'acte 3 uniquement (pas de check incrémental pendant le casse).
+- **Récompense uniforme** : **+2 Crédits convertis en butin** + mention narrative au bilan. Pas de bonus différencié selon difficulté.
+- **Pool** : 30 objectifs (6 par rôle), répartis sur 4 axes (économique / comparatif / action / narratif).
+- **Algorithme de tirage** : aléatoire dans le pool du rôle, avec re-tirage sur paires bloquantes dures (cf. §7.4).
+
+Table complète dans `GAMEPLAY.md §7`.
+
+### Pourquoi
+- **Vérification acte 3** seulement : évite que le moteur dévoile mécaniquement la cible d'un objectif au cours du casse (préserve le bluff).
+- **Récompense uniforme** : simplifie le calcul, évite le min-max sur les objectifs faciles. Le vrai gain de la réussite est narratif.
+- **Pool fini de 30** : équilibrable, testable, anti-doublons. Les "secrets de groupe" sont reportés en passe 2 si l'expérience le justifie.
+- **Anti-blocage** : la paire H4 ↔ F4 est mutuellement impossible (les deux veulent être plus riche que l'autre). La détecter au tirage évite une frustration sourde.
+
+### Implications
+- Chaque objectif a un **predicate** vérifiable mécaniquement par le moteur en fin de partie (pas d'objectif type "tu as roleplayé bien").
+- Les objectifs comparatifs (`H6 info-hoarder`, `I1 explorer`, etc.) requièrent un **stockage des compteurs** côté store pendant tout le casse.
+- F5 *coffer-keeper* dépend du `spec/calcul-butin` pour le seuil chiffré exact (issue dédiée).
+- Si les playtests révèlent un objectif déséquilibré, on amende ce document + la table §7 dans la même PR.
+
+---
+
 ## Index des décisions
 
 | ID  | Sujet                                               | Statut |
@@ -472,6 +545,9 @@ Le 5e rôle (à 5 joueurs) est l'**Observateur**, pilote d'un drone furtif depui
 | G5  | Tablette tournée occasionnelle                      | Acté   |
 | G6  | Coop sincère stricte pendant le casse               | Acté   |
 | G7  | 5e rôle = Observateur (drone)                       | Acté   |
+| G8  | Système de résolution chiffré (2d6 + tables)        | Acté   |
+| G9  | Pacte secret cadré en 3 templates                   | Acté   |
+| G10 | Objectifs privés vérifiés acte 3, récompense uniforme | Acté |
 
 ---
 
