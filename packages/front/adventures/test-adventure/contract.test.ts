@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { testAdventureManifest } from './manifest';
-import { validateManifest } from '../../core/types/manifest-validation';
+import { validateManifest } from '../../src/core/types/manifest-validation';
 
 /**
  * Garde-fou de conformité au contrat `Adventure` :

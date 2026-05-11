@@ -1,0 +1,14 @@
+{
+  "name": "server",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Serveur Node + WebSocket de Pixel Quests. À implémenter dans le Prompt 2.",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Server not implemented yet (Prompt 2)' && exit 0",
+    "build": "echo 'Server not implemented yet (Prompt 2)' && exit 0",
+    "test": "echo 'Server not implemented yet (Prompt 2)' && exit 0",
+    "typecheck": "echo 'Server not implemented yet (Prompt 2)' && exit 0",
+    "lint": "echo 'Server not implemented yet (Prompt 2)' && exit 0"
+  }
+}

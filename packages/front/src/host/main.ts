@@ -3,7 +3,7 @@ import { SaveManager } from '../core/persistence/SaveManager';
 import { createInitialState } from '../core/state/GameState';
 import { HomeScreen } from './HomeScreen';
 import { SetupScreen } from './SetupScreen';
-import { banqueLuneAdventure } from '../adventures/banque-lune';
+import { banqueLuneAdventure } from '../../adventures/banque-lune';
 import type { Adventure } from '../core/types/adventure';
 import type { Player } from '../core/players/Player';
 
