@@ -1,12 +1,22 @@
 # FRONTEND — Le Casse de la Banque Lune
 
+> ⚠️ **Document v1 partiellement obsolète — pivot Jackbox du 12 mai 2026.**
+>
+> La **§2 Plateau interactif** ci-dessous décrit le modèle initial "zones discrètes" (F2). Suite au pivot, la mise en œuvre devient **map continue tile-based** (F12-F15) — les 9 zones canoniques restent en arrière-plan logique (F14) mais le rendu n'a plus de séparation physique. Les principes de §1 et la liste des écrans/composants à spécifier restent valides.
+>
+> Autres changements depuis cette v1 :
+> - §2.8 "tap / long press / drag" décrit l'interaction côté tablette unique. Avec G5 amendée + F9, l'**interaction privée** (proposition d'action, vote secret, consultation Crédits/Dossiers/objectif privé) passe désormais par le **smartphone Player**, pas la tablette.
+> - §2.1 mentionne "F1 Z9 en haut" comme principe — F1 amendée a généralisé ce principe sans référence à Z9 spécifiquement.
+>
+> Refonte complète prévue dans le **Prompt 3** (refonte front post-serveur). En attendant, voir aussi `docs/DECISIONS.md` (F9-F20).
+
 > Spec design front faisant autorité pour la première aventure de Pixel Quests.
 > Couvre le plateau interactif, les écrans, et les composants d'UI.
 >
 > À lire avec :
 > - `docs/GAMEPLAY.md` — la spec mécanique
 > - `src/adventures/banque-lune/ART.md` — la DA visuelle (palette, sprites, ambiance)
-> - `docs/DECISIONS.md` — les décisions structurantes (D1-D8, G1-G10, F1-Fn)
+> - `docs/DECISIONS.md` — les décisions structurantes (D1-D8, G1-G10, F1-F20)
 >
 > Statut : **draft v1** — section plateau interactif spécifiée. Sections écrans et composants à compléter dans une prochaine passe.
 >
