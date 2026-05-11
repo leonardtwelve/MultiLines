@@ -28,7 +28,7 @@ module.exports = {
     {
       // Garde-fou architectural : core/ ne doit RIEN savoir des aventures.
       // Voir docs/ARCHITECTURE.md.
-      files: ['src/core/**/*.ts'],
+      files: ['packages/front/src/core/**/*.ts'],
       rules: {
         'no-restricted-imports': [
           'error',
