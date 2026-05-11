@@ -1,3 +1,15 @@
+/**
+ * ⚠️ POST-PIVOT JACKBOX (12 mai 2026)
+ *
+ * Données des 5 rôles du Casse Lune. La structure `actionsByRoom` (héritée
+ * du PoC 3-pièces) sera refondue dans le Prompt 3 pour s'aligner sur la map
+ * continue (F12-F15) : actions ciblant des zones logiques, pas des pièces
+ * Phaser. Côté serveur, ces actions deviendront des **intents** validés et
+ * résolus de façon autoritaire (F17).
+ *
+ * Pour la migration monorepo, les données restent inchangées — seule la
+ * **consommation** de ces données va changer.
+ */
 import type { Role, RoleId } from './types';
 
 const honest = (id: string, label: string, outcome: string): { id: string; label: string; outcome: string } => ({

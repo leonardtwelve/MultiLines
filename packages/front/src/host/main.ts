@@ -1,3 +1,15 @@
+/**
+ * ⚠️ POST-PIVOT JACKBOX (12 mai 2026)
+ *
+ * Ce fichier orchestre **uniquement le Host** (tablette). Le Player smartphone
+ * aura son propre point d'entrée dans `packages/front/src/player/` (Prompt 3).
+ *
+ * TODO Prompt 3 :
+ * - Connexion WebSocket au serveur (F11, F20) au lieu du flux mono-device actuel
+ * - Affichage du QR (F10) en attente des Players
+ * - Réception de la projection serveur (D7 amendée, F17) pour piloter l'UI
+ * - Plus de `engine.store` ni `engine.privateView` (refondus / supprimés)
+ */
 import { GameEngine } from '../core/engine/GameEngine';
 import { SaveManager } from '../core/persistence/SaveManager';
 import { createInitialState } from '../core/state/GameState';
@@ -46,7 +58,7 @@ function showSetup(adventure: Adventure): void {
 }
 
 async function launchAdventure(adventure: Adventure, players: Player[]): Promise<void> {
-  root!.innerHTML = '<div class="loading">Distribution des rôles…</div>';
+  root!.innerHTML = '<div class="loading">Chargement de l\'aventure…</div>';
   const container = document.createElement('div');
   container.id = 'game';
   root!.appendChild(container);
@@ -55,15 +67,16 @@ async function launchAdventure(adventure: Adventure, players: Player[]): Promise
   currentEngine = engine;
   currentAdventure = adventure;
 
-  // Initialise le store avec les joueurs configurés (D7).
+  // TODO Prompt 3 : la source de vérité passera côté serveur (D7 amendée, F17).
+  // Pour l'instant, on construit un GameState local minimal pour satisfaire le
+  // contrat `Adventure.start(initialState)` ; le serveur prendra le relais.
   const initial = createInitialState();
   for (const p of players) {
     initial.players[p.id] = { id: p.id, name: p.name, color: p.color, isActive: false };
   }
-  engine.initStore(initial);
 
-  // Compatibilité legacy : PlayerManager continue d'exister tant que les
-  // services moteur (TurnSystem, etc.) ne sont pas migrés vers le store.
+  // Legacy : PlayerManager reste utilisé tant que la projection serveur n'est
+  // pas câblée. Voir #63 (spec/store-projection).
   for (const p of players) engine.players.add(p);
 
   // Hook propre à banque-lune (configure onFinish avant init).
@@ -79,7 +92,7 @@ async function launchAdventure(adventure: Adventure, players: Player[]): Promise
   if (loading) loading.remove();
 
   engine.start();
-  adventure.start(engine.store.getState());
+  adventure.start(initial);
 }
 
 showHome();

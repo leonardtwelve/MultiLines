@@ -1,3 +1,14 @@
+/**
+ * ⚠️ POST-PIVOT JACKBOX (12 mai 2026)
+ *
+ * TODO : à réécrire en intent serveur (Prompt 3). La distribution autoritaire
+ * vivra côté serveur (F17). Le client (Host) recevra les rôles assignés via
+ * un événement `banque-lune.roles-distributed` et chaque smartphone Player
+ * recevra son rôle en privé (G5 amendée).
+ *
+ * La fonction `distributeRoles` est conservée telle quelle pendant la
+ * migration monorepo — elle sera utilisée par le serveur ou archivée.
+ */
 import type { Role, RoleId } from './types';
 import { ROLES } from './index';
 

@@ -1,5 +1,14 @@
 # Architecture
 
+> ⚠️ **Document à mettre à jour post-pivot Jackbox (12 mai 2026).**
+>
+> Ce document décrit l'architecture **pré-pivot** (single-package, single-device). Suite au pivot du 12 mai 2026 :
+> - Le repo est désormais un **monorepo** avec `packages/front/` (clients web) et `packages/server/` (serveur Node — placeholder, à implémenter dans le Prompt 2). Cf. F16.
+> - Le projet vise un **modèle Jackbox** (tablette Host + smartphone Player) avec serveur autoritaire (F9-F20).
+> - La séparation `core/adventures` reste valide à l'intérieur de `packages/front/`.
+>
+> Refonte complète prévue dans le Prompt 3. En attendant, le schéma ci-dessous reste indicatif des principes inchangés (séparation core/aventures, EventBus, contrat `Adventure`).
+
 ## Principe directeur
 **Le moteur ne sait rien des aventures. Les aventures connaissent et utilisent le moteur.**
 

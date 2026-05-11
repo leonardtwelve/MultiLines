@@ -1,3 +1,22 @@
+/**
+ * ⚠️ POST-PIVOT JACKBOX (12 mai 2026)
+ *
+ * Contrat `Adventure` typé. Préservé tel quel pendant la migration monorepo.
+ *
+ * **À retoucher dans le Prompt 3** :
+ * - Les méthodes des aventures qui mutent un store local (ex: distribution de
+ *   rôles, ouverture d'une scène) deviendront des **intents** envoyés au
+ *   serveur via WebSocket (F17, F20). L'aventure aura alors une API plus
+ *   déclarative : elle expose des handlers d'intents et des projections
+ *   spécifiques, le serveur arbitre.
+ * - Le paramètre `initialState` de `start()` viendra de la projection serveur,
+ *   pas d'un store local. Le type `GameState` sera redéfini côté serveur
+ *   (`shared/` cible Prompt 2).
+ *
+ * Pour la migration monorepo, on **ne touche pas au typage** — on signale
+ * juste l'intention. Voir issue #35 (Système de rôles générique) pour le
+ * re-scope post-pivot.
+ */
 import type { GameEngine } from '../engine/GameEngine';
 import type { GameState } from '../state/GameState';
 

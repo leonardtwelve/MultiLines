@@ -1,11 +1,27 @@
+/**
+ * ⚠️ POST-PIVOT JACKBOX (12 mai 2026)
+ *
+ * Cette aventure est dans un état **transitoire**. Avant le pivot, elle :
+ * - distribuait les rôles localement puis les révélait via `engine.privateView`
+ * - stockait son état via un singleton local (`state.ts`, archivé)
+ * - enregistrait `BoardScene` (9 zones discrètes, archivée)
+ *
+ * Avec le pivot :
+ * - Les rôles seront distribués **côté serveur** (#61 spec/server-state-machine)
+ *   et révélés sur les **smartphones** des joueurs (#62 spec/connexion-qr, G5 amendée)
+ * - L'état vit côté serveur (D7 amendée, F17). Le Host reçoit une projection
+ *   (#63 spec/store-projection)
+ * - Le plateau devient une **map continue** tile-based (F12-F15), à implémenter
+ *   dans le Prompt 3 (chantier #67 phase D)
+ *
+ * Pour l'instant : stub qui satisfait le contrat `Adventure` sans rien faire
+ * de significatif. Voir #41 pour l'implémentation des actions des 5 rôles.
+ */
 import type { Adventure } from '../../src/core/types/adventure';
 import type { GameEngine } from '../../src/core/engine/GameEngine';
 import type { GameState } from '../../src/core/state/GameState';
 import { banqueLuneManifest } from './manifest';
-import { distributeRoles } from './roles/distribute';
-import { BoardScene } from './scenes/BoardScene';
 import { ResultScene } from './scenes/ResultScene';
-import { clearBanqueLuneContext, createRunState, setBanqueLuneContext } from './state';
 
 export interface BanqueLuneStartOptions {
   /** Callback appelé après l'écran de résultat (ex: revenir à l'accueil). */
@@ -24,58 +40,27 @@ export const banqueLuneAdventure: Adventure & {
     pendingOptions = options;
   },
 
-  async init(engine: GameEngine): Promise<void> {
+  async init(_engine: GameEngine): Promise<void> {
     if (!pendingOptions) {
       throw new Error("Banque Lune : appelle adventure.configure({ onFinish }) avant init().");
     }
-    const options = pendingOptions;
-    const players = engine.players.list();
-    if (players.length < 3 || players.length > 5) {
-      throw new Error('Banque Lune : 3 à 5 joueurs requis');
-    }
-
-    const playerRoles = distributeRoles(players.map((p) => p.id), options.rng);
-
-    // Phase 1 — révélation privée des rôles, joueur par joueur.
-    for (const player of players) {
-      const role = playerRoles.get(player.id);
-      if (!role) continue;
-      await engine.privateView.reveal(player.name, {
-        title: `Tu es ${role.name}`,
-        body: role.description,
-        accentColor: role.color,
-      });
-    }
-
-    // Phase 2 — préparer l'état partagé entre scènes.
-    // NOTE M1 : singleton interne hérité du PoC. Migration vers
-    // engine.store.adventureState prévue avec l'arrivée des actions M2.
-    const state = createRunState(players, playerRoles);
-    setBanqueLuneContext({
-      state,
-      view: engine.privateView,
-      onFinish: () => {
-        clearBanqueLuneContext();
-        pendingOptions = null;
-        options.onFinish();
-      },
-    });
-
-    // Phase 3 — enregistrer les scènes Phaser :
-    //   BoardScene = plateau principal acte 2 (visualisation seule en M1)
-    //   ResultScene = bilan acte 3
-    // Les actions, événements de tour et calcul de butin viennent en M2.
-    engine.scenes.add(BoardScene);
-    engine.scenes.add(ResultScene);
+    // TODO Prompt 3 : distribution rôles + révélation passent par le serveur.
+    //   - distributeRoles : appel au serveur via WebSocket (intent → state.updated)
+    //   - reveal des rôles : message privé envoyé au smartphone du joueur cible (G5 amendée)
+    //   - setBanqueLuneContext : remplacé par lecture de engine.store (projection serveur)
+    //
+    // Pour le moment, on n'enregistre que ResultScene comme placeholder Phaser.
+    // BoardScene a été archivée — la map continue tile-based sera implémentée
+    // dans le chantier #67 phase D.
+    _engine.scenes.add(ResultScene);
   },
 
   start(_initialState: Readonly<GameState>): void {
-    // initialState ignoré — banque-lune lit son contexte via le singleton (M1).
-    // Phaser démarre la première scène enregistrée (BoardScene).
+    // TODO Prompt 3 : démarrer la partie côté serveur, attendre les events
+    // initiaux (briefing, distribution rôles, etc.).
   },
 
   destroy(): void {
-    clearBanqueLuneContext();
     pendingOptions = null;
   },
 };

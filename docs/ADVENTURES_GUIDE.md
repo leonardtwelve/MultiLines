@@ -1,5 +1,15 @@
 # Guide des aventures — Pixel Quests
 
+> ⚠️ **Document à mettre à jour post-pivot Jackbox (12 mai 2026).**
+>
+> Ce guide a été écrit avant le pivot vers l'architecture monorepo + serveur autoritaire. Plusieurs sections sont obsolètes :
+> - Les chemins (`src/core/`, `src/adventures/`) sont devenus `packages/front/src/core/` et `packages/front/adventures/` (cf. F16).
+> - Les **actions** des rôles ne mutent plus un store local — elles deviennent des **intents** envoyés au serveur via WebSocket (D7 amendée, F17, F20).
+> - L'**information privée** ne passe plus par la tablette (PrivateView archivée) mais par le **smartphone du joueur** (G5 amendée, F10).
+> - Le **plateau** passe en map continue tile-based (F12-F15) — les zones discrètes sont obsolètes.
+>
+> Refonte complète prévue dans le **Prompt 3** (refonte front post-serveur). En attendant, ce document garde sa valeur historique sur les principes (contrat `Adventure`, séparation `core/adventures`, manifest, etc.).
+
 Mode d'emploi opérationnel pour créer et maintenir une aventure.
 Cible : un développeur qui n'a **jamais lu le code du moteur**. Si à un endroit ce guide t'oblige à plonger dans `src/core/`, c'est que le guide a un trou — corrige-le.
 

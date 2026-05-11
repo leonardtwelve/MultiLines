@@ -1,3 +1,11 @@
+/**
+ * ⚠️ POST-PIVOT JACKBOX (12 mai 2026)
+ *
+ * Adventure factice pour valider le contrat. La signature reste identique
+ * pendant la migration monorepo. La refonte post-pivot (intents, projections,
+ * smartphone) sera répercutée ici au moment où le contrat `Adventure` évoluera
+ * (cf. Prompt 3 + issue #35).
+ */
 import Phaser from 'phaser';
 import type { Adventure } from '../../src/core/types/adventure';
 import type { GameEngine } from '../../src/core/engine/GameEngine';

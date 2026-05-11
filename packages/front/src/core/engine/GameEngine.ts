@@ -1,64 +1,51 @@
+/**
+ * ⚠️ POST-PIVOT JACKBOX (12 mai 2026)
+ *
+ * Le `GameEngine` est en cours de refonte. Avec D7 amendée (source de vérité
+ * côté serveur, F17), les responsabilités changent :
+ * - **Plus de store local** (D7 → projection serveur, à câbler en Prompt 3).
+ * - **Plus de PrivateView intégré** (G5 amendée → info privée = smartphone, F19).
+ * - **Plus de TurnSystem côté client** (logique de tour côté serveur, F17).
+ *
+ * Reste valide pour M2 :
+ * - Orchestration Phaser (côté Host tablette)
+ * - EventBus local (réception/dispatch d'events serveur)
+ * - SceneManager
+ * - PlayerManager (lecture seule, à recâbler en projection)
+ * - SaveManager (préférences UI locales)
+ * - AudioManager
+ *
+ * Sera scindé / restructuré dans le Prompt 3 (refonte front avec serveur).
+ */
 import Phaser from 'phaser';
 import { EventBus } from './EventBus';
 import { SceneManager } from './SceneManager';
 import { PlayerManager } from '../players/PlayerManager';
-import { TurnSystem } from '../players/TurnSystem';
 import { SaveManager } from '../persistence/SaveManager';
 import { AudioManager } from '../audio/AudioManager';
-import type { PrivateView } from '../ui/PrivateView';
-import { DomPrivateView } from '../ui/DomPrivateView';
-import { Store } from '../state/Store';
-import type { GameState } from '../state/GameState';
 
 export interface GameEngineConfig {
   parent: HTMLElement;
   width: number;
   height: number;
-  /** PrivateView injectable (par défaut : DomPrivateView monté sur document.body). */
-  privateView?: PrivateView;
 }
 
-/**
- * Orchestrateur du moteur générique. Détient les services partagés (joueurs, tour,
- * sauvegarde, audio, événements, store, vue privée) et démarre Phaser une fois
- * les scènes enregistrées par l'aventure courante.
- */
 export class GameEngine {
   readonly events = new EventBus();
   readonly scenes = new SceneManager();
   readonly players = new PlayerManager();
-  readonly turns: TurnSystem;
   readonly save = new SaveManager();
   readonly audio = new AudioManager();
-  readonly privateView: PrivateView;
 
-  private _store: Store | null = null;
+  // TODO Prompt 3 : turns retiré (logique côté serveur, F17).
+  // TODO Prompt 3 : privateView retiré (G5 amendée — passe par smartphone, F19).
+  // TODO Prompt 3 : store retiré (D7 amendée — source côté serveur, F17).
+
   private game: Phaser.Game | null = null;
   private readonly config: GameEngineConfig;
 
   constructor(config: GameEngineConfig) {
     this.config = config;
-    this.turns = new TurnSystem(this.players);
-    this.privateView = config.privateView ?? new DomPrivateView();
-  }
-
-  /**
-   * Initialise le store de partie. Doit être appelé avant `adventure.init()`
-   * (le store est en lecture pour `adventure.start(initialState)`).
-   */
-  initStore(initial: GameState): Store {
-    if (this._store) {
-      throw new Error('GameEngine.initStore : store déjà initialisé.');
-    }
-    this._store = new Store(initial, this.events);
-    return this._store;
-  }
-
-  get store(): Store {
-    if (!this._store) {
-      throw new Error('GameEngine.store : non initialisé. Appelle initStore(...) avant.');
-    }
-    return this._store;
   }
 
   start(): void {
@@ -78,11 +65,9 @@ export class GameEngine {
   }
 
   stop(): void {
-    this.privateView.close();
     this.game?.destroy(true);
     this.game = null;
     this.events.clear();
     this.scenes.clear();
-    this._store = null;
   }
 }

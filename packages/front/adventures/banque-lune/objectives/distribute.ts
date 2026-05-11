@@ -1,3 +1,14 @@
+/**
+ * ⚠️ POST-PIVOT JACKBOX (12 mai 2026)
+ *
+ * TODO : à réécrire en intent serveur (Prompt 3). La distribution des
+ * objectifs privés vivra côté serveur (F17 + G10 vérification acte 3).
+ * Chaque smartphone Player recevra son objectif en privé via un message
+ * `private:objective-revealed` (G5 amendée).
+ *
+ * La fonction `distributeObjectives` est conservée telle quelle pendant la
+ * migration monorepo — elle sera utilisée par le serveur ou archivée.
+ */
 import type { Objective } from './types';
 import type { RoleId } from '../roles/types';
 import { BLOCKING_PAIRS, OBJECTIVES_BY_ROLE } from './definitions';
