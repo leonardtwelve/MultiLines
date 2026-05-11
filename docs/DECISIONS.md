@@ -210,15 +210,21 @@ Un asset n'est promu dans `src/core/assets/` **qu'au moment où une 2e aventure 
 ## D7 — State management
 
 **Décidé le** : M1
-**Statut** : Acté — **décision la plus structurante du M1**
+**Amendé le** : 12 mai 2026 (pivot Jackbox — la source de vérité passe côté serveur)
+**Statut** : Acté
 
-### Décision
-**Store unique typé fait maison** dans `src/core/state/`.
+### Décision (amendée)
+**Store unique typé. La source de vérité vit côté serveur Node.**
 
-- Une seule source de vérité par partie (`GameState`).
-- Modifications uniquement via des **actions** définies (`startTurn`, `endTurn`, `playerJoined`...).
-- Chaque action mute l'état (ou retourne un nouvel état immuable, à trancher en M2 selon les perfs Phaser) et émet un événement sur l'`EventBus`.
+Le Host et les Players sont des **projections** (vues) sur cet état, mis à jour par messages WebSocket. Chaque client maintient un store local en **lecture**, qui se synchronise via les événements reçus du serveur. Les modifications passent par des messages serveur, **jamais** par mutation locale directe.
+
+- Une seule source de vérité par partie (`GameState`), hébergée sur le serveur.
+- Modifications uniquement via des **actions** envoyées au serveur, qui valide + applique + diffuse l'événement de mise à jour.
+- Chaque client (Host tablette, Player smartphone) reconstruit son store local à partir des événements reçus.
 - Les aventures stockent leur état spécifique dans `state.adventureState`, typé par chaque aventure.
+
+### Raison de l'amendement (12 mai 2026)
+Avec le pivot multi-device (F9-F11), un store unique côté client ne suffit plus. Le serveur doit arbitrer entre Host et Players, et survivre aux reconnexions.
 
 ```typescript
 interface GameState {
@@ -398,18 +404,20 @@ Le joueur choisit son action ; le hasard ne porte que sur la réussite. Le dé e
 **Décidé le** : M1
 **Statut** : Acté
 
-### Décision
-**Usage occasionnel** : 3-5 fois par partie sur événements de rôle, plus la distribution des objectifs (acte 1, 1× par joueur) et le vote (acte 3, 1× par joueur). **Pas systématique.**
+### Décision (amendée le 12 mai 2026)
+**Information privée sur écran personnel.**
 
-### Pourquoi
-- Trop fréquent → friction physique pénible (tablette qui tourne en permanence).
-- Trop rare → la dramaturgie du geste se perd.
-- Le geste lui-même devient un signal narratif : « la tablette bouge, quelque chose se passe ».
+La tablette centrale **n'affiche jamais d'information privée**. Toute info privée (objectif privé, Crédits, Dossiers, choix d'action, vote secret, propositions de Pacte) passe exclusivement par le **smartphone du joueur concerné** (F10).
+
+La tablette centrale est réservée à l'affichage **public** : maquette, jauge d'alerte, résultats publics de dés, révélations finales.
+
+### Raison de l'amendement (12 mai 2026)
+La mécanique « tablette tournée » devient obsolète avec le pivot Jackbox (F9). On la remplace par un principe plus large qui guide tout le design d'écrans : *info privée ⇔ smartphone perso, info publique ⇔ tablette centrale*.
 
 ### Implications
-- Volume cible : **~5-7 manipulations par joueur** sur l'ensemble d'une partie.
-- L'engine doit supporter un PrivateView interruptible et chaînable (déjà en place via `DomPrivateView`).
-- Pas de pattern « tablette tournée à chaque tour » dans les designs futurs.
+- Pattern « tablette tournée à chaque tour » **abandonné**.
+- `DomPrivateView` (overlay tablette du PoC M1) sera remplacé par une UI Player sur smartphone (F19).
+- Le serveur (F11) route les infos privées vers la bonne paire d'yeux : un message `private:role-revealed` ne va qu'au socket du joueur concerné.
 
 ---
 
@@ -535,23 +543,21 @@ Table complète dans `GAMEPLAY.md §7`.
 
 ---
 
-## F1 — Schéma narratif assumé (plateau non réaliste)
+## F1 — Métaphore visuelle du plateau
 
 **Décidé le** : M1 (passe 1 design front)
+**Amendé le** : 12 mai 2026 (généralisée — détachée du layout zones-discrètes initial)
 **Statut** : Acté
 
-### Décision
-Le plateau est un **plan tactique**, pas une carte fidèle. La topologie sert le gameplay et la lisibilité, pas le réalisme architectural. Z9 (toit) peut être en haut du plan sans qu'un escalier ne soit visible.
+### Décision (amendée)
+**Schéma narratif assumé.** La maquette est une représentation tactique du Casse, conçue pour la lisibilité et le gameplay, pas pour le réalisme architectural. Les conventions spatiales (haut/bas, gauche/droite) servent la lecture, pas la fidélité cartographique.
 
-### Pourquoi
-- Lisibilité d'ensemble prime sur réalisme.
-- Évite les débats sur la « vraie » disposition spatiale d'une banque.
-- Cohérent avec l'esthétique de maquette vivante (cf. `ART.md`).
+### Raison de l'amendement (12 mai 2026)
+La formulation initiale liait F1 à la justification de Z9 dans le layout zones-discrètes. Avec la map continue (F12-F13), on garde le principe mais on enlève la mention de Z9 spécifiquement.
 
 ### Implications
 - Pas de proportions architecturales à respecter.
-- Les positions des zones servent la lecture, pas la cohérence d'un plan d'architecte.
-- Les connexions entre zones sont des **liens logiques**, pas des chemins parcourus.
+- Les positions sur la map servent la lecture, pas la cohérence d'un plan d'architecte.
 
 ---
 
@@ -575,61 +581,54 @@ Le plateau est un **graphe de zones** (option C explorée en session). Pas de gr
 
 ---
 
-## F3 — Fog partiel
+## F3 — Visibilité initiale (fog partiel)
 
 **Décidé le** : M1
+**Amendé le** : 12 mai 2026 (alignement avec map continue F12-F15)
 **Statut** : Acté
 
-### Décision
-Au démarrage de l'acte 2, **structure du plateau visible**, **contenus cachés** (overlay 60% noir sur les zones non-explorées). L'action *Reconnaissance* révèle les contenus.
+### Décision (amendée)
+**Fog partiel.** La **structure du plateau** (tous les espaces de la map) est visible dès le début. Les **portes verrouillées sont visibles** mais infranchissables (cadenas pixel art, F15). Les **contenus précis** (butin dans les coffres, présence de Dossiers, PNJ exacts) sont révélés par les actions de jeu (Reconnaissance, Authentifier, etc.).
 
-### Pourquoi
-- Évite l'écran « tout vide » peu engageant à la prise en main.
-- Conserve le mystère sur le contenu exact (Dossiers, butin, PNJ) → motivation à l'exploration.
-- L'action *Reconnaissance* a une utilité claire et tangible.
+### Raison de l'amendement (12 mai 2026)
+Reformulation pour s'aligner avec F12-F15 (map continue tile-based, portes physiques visibles avec cadenas). La version précédente parlait de "boîtes assombries" — ça n'a plus de sens sur une map continue.
 
 ### Implications
-- Z1 (Parvis) et Z2 (Hall) sont révélées par défaut au démarrage.
-- Les autres zones affichent leur structure (boîte + connexions) mais pas leur contenu interne.
-- Une fois explorée, une zone reste révélée pour la suite de la partie.
+- Le joueur peut voir le plan global dès l'ouverture de la partie (zones, couloirs, portes).
+- Les portes verrouillées sont visibles physiquement → le joueur sait *quoi* débloquer.
+- Le brouillard ne concerne plus la *structure* mais le *contenu* (butin, Dossiers, état des PNJ).
 
 ---
 
-## F4 — Présence simultanée illimitée par zone
+## F4 — ~~Présence simultanée illimitée par zone~~
 
 **Décidé le** : M1
-**Statut** : Acté
+**Abrogée le** : 12 mai 2026 (sans objet sur map continue)
+**Statut** : ❌ **Abrogée**
 
-### Décision
-Plusieurs avatars peuvent être dans la même zone, **sans limite**.
+### Raison de l'abrogation
+Sur une map continue tile-based (F12), la notion de « présence simultanée par zone » n'a plus de sens — plusieurs avatars peuvent évidemment être proches, ils sont sur des cases distinctes ou se chevauchent visuellement. Cette décision était spécifique au plateau zones-discrètes initial qui a été remplacé.
 
-### Pourquoi
-- Coopération facilitée : deux rôles peuvent agir dans la même zone (ex: Hacker + Infiltré sur le coffre).
-- Évite les frustrations "tu ne peux pas entrer, c'est plein" qui poliue l'UX d'un jeu coop.
-- Simplifie l'UI (pas de gestion d'occupation par zone).
-
-### Implications
-- Sprites alignés dans la zone, légère randomisation pour éviter la superposition stricte.
-- Si 5 avatars dans la même zone, le rendu reste lisible (zones dimensionnées en conséquence).
+Pas de remplacement nécessaire : la collision/superposition d'avatars devient une question de rendu (F14), pas une règle de gameplay.
 
 ---
 
-## F5 — Déplacement libre avant action
+## F5 — Coût du déplacement
 
 **Décidé le** : M1
+**Amendé le** : 12 mai 2026 (mécanique tile-based concrète)
 **Statut** : Acté
 
-### Décision
-Se déplacer entre zones **n'est pas une action**. Le joueur se déplace librement avant de choisir son action. Tour = (déplacement libre) + (action) + (résolution).
+### Décision (amendée)
+Pendant son tour, le joueur peut **déplacer son avatar sur la map** avant de choisir son action. Le déplacement est **libre dans la limite d'une portée de mouvement** (à chiffrer en `spec/portee-deplacement` — typiquement N tiles par tour). Le déplacement ne compte **pas comme une action** mais conditionne *où* l'action peut être faite.
 
-### Pourquoi
-- 6-8 tours pour le casse — chaque action compte. Perdre un tour pour bouger est frustrant.
-- Le déplacement n'est pas tactique en lui-même (zones connectées simples).
-- La tactique passe par le **choix de l'action**, pas le mouvement.
+### Raison de l'amendement (12 mai 2026)
+Adaptation au modèle map continue (F12). Le déplacement reste « libre avant l'action » dans l'esprit, mais devient une mécanique tactile concrète (l'avatar bouge case par case, avec une portée chiffrée).
 
 ### Implications
 - Un joueur peut se déplacer même s'il ne fait aucune action ce tour-ci.
-- La distance n'a pas de coût ; seules les zones verrouillées limitent le mouvement.
+- La **portée de déplacement** devient un paramètre de jeu (cf. `spec/portee-deplacement`).
+- Les portes verrouillées (F15) bloquent le mouvement, pas la portée elle-même.
 
 ---
 
@@ -694,36 +693,277 @@ La **topologie du plateau est fixe** d'une partie à l'autre. La variabilité vi
 
 ---
 
+## F9 — Modèle de jeu (hybride Jackbox)
+
+**Décidé le** : 12 mai 2026
+**Statut** : Acté
+
+### Décision
+**Hybride à la Jackbox Party**, avec parties plus longues (30-45 min) et plus tactiques. **Tablette centrale** affiche le plateau et l'ambiance, **chaque joueur utilise son smartphone** comme manette personnelle pour ses infos privées et ses choix.
+
+### Implications
+- Le PoC mono-device M1 devient une **étape technique**, remplacée par l'architecture multi-device pour M2.
+- Toute la suite des décisions F (F10-F20) découle de ce pivot.
+- Les chartes visuelles (#11, #12) restent valides pour la tablette ; il faudra une charte visuelle Player (smartphone) en suite.
+
+---
+
+## F10 — Smartphone
+
+**Décidé le** : 12 mai 2026
+**Statut** : Acté
+
+### Décision
+Smartphone **obligatoire** pour chaque joueur. **Page web responsive** (pas d'app à installer). Connexion à la partie via **QR code** affiché sur la tablette, avec **code à 4-6 lettres en fallback**.
+
+### Implications
+- Pas d'App Store ni de Play Store à gérer — la PWA suffit.
+- Le QR doit être généré côté serveur et affiché grand sur la tablette pour scan à distance.
+- Code de fallback indispensable : un joueur sans caméra ou avec QR cassé doit pouvoir rejoindre.
+- À spec : taille/expiration/régénération du QR, format du code, sécurité (`spec/connexion-qr`).
+
+---
+
+## F11 — Architecture réseau
+
+**Décidé le** : 12 mai 2026
+**Statut** : Acté
+
+### Décision
+**Serveur central WebSocket cloud-only.** Pas de mode LAN, pas de serveur local sur la tablette. Le serveur est toujours hébergé en ligne, ce qui permet aussi de jouer à distance (avec call audio en parallèle).
+
+### Implications
+- Connexion internet **requise** pour toute partie — abandon explicite du mode LAN.
+- Bonus : partie à distance possible (joueurs séparés géographiquement avec call audio).
+- Coût d'hébergement à assumer (F18).
+- Le serveur survit aux reconnexions de clients (D7 amendée).
+
+---
+
+## F12 — Granularité du déplacement
+
+**Décidé le** : 12 mai 2026
+**Statut** : Acté
+
+### Décision
+Déplacement **tile-based 32×32**. L'avatar se déplace case par case sur la map continue. Pas de joystick, pas de point-and-click avec pathfinding — un tap sur une case fait déplacer l'avatar.
+
+### Implications
+- Pas de moteur de pathfinding nécessaire — le joueur clique la case voulue.
+- Cohérent avec la grille pixel art 32×32 (cf. `ART.md §2.2`).
+- L'animation de marche reste (sprites par direction, cf. ART.md §2.3), mais ne traverse pas chaque tile intermédiaire visiblement — il glisse d'un point A à un point B.
+
+---
+
+## F13 — Taille de la map
+
+**Décidé le** : 12 mai 2026
+**Statut** : Acté
+
+### Décision
+Map **40×20 tiles** (1280×640 px), affichée sans scroll dans la zone map de l'écran Host. Tout le plateau est visible simultanément.
+
+### Implications
+- Aligné avec F8 (pas de scroll).
+- Surface assez large pour 9 zones thématiques (F14) sans entasser.
+- La zone HUD bas (jauge d'alerte, tour, butin, temps) prend les ~80 px restants sur 720.
+
+---
+
+## F14 — Zones mécaniques sur map continue
+
+**Décidé le** : 12 mai 2026
+**Statut** : Acté
+
+### Décision
+Les 9 zones du game design (Hall, Bureaux, Coffres, etc.) sont **conservées en arrière-plan logique** mais visuellement représentées **sans séparation physique**. Décor, mobilier et éclairage différencient les zones — pas de boîtes ni de murs entre elles, sauf pour les zones verrouillées (F15).
+
+### Raison
+Concilie F2 (zones thématiques narratives) et la map continue (F12-F13). Les 9 zones canoniques (FRONTEND.md §2.3) restent le **modèle de référence** côté gameplay, mais le rendu est environnemental.
+
+### Implications
+- Côté code : une couche `zone` reste en arrière-plan logique pour rattacher tile → zone (utile aux actions).
+- Côté rendu : tilemaps + objets décoratifs + éclairage différencient les ambiances.
+
+---
+
+## F15 — Verrouillages physiques
+
+**Décidé le** : 12 mai 2026
+**Statut** : Acté
+
+### Décision
+Les passages entre zones verrouillées sont représentés par des **portes physiques** avec un **cadenas pixel art** visible. Une porte ouverte (débloquée) n'affiche plus le cadenas. L'avatar ne peut pas franchir une porte verrouillée.
+
+### Implications
+- Lisibilité immédiate : on voit où sont les portes, on voit lesquelles sont verrouillées.
+- Le déblocage déclenche une animation d'ouverture (porte s'efface, cadenas disparaît).
+- Aligné avec F3 amendée (les portes verrouillées sont visibles dès le départ).
+
+---
+
+## F16 — Structure du projet
+
+**Décidé le** : 12 mai 2026
+**Statut** : Acté
+
+### Décision
+**Monorepo à 2 packages** :
+
+```
+pixel-quests/
+├── packages/
+│   ├── front/     # Clients web : Host (tablette) + Player (smartphone)
+│   └── server/    # Serveur Node + WebSocket
+└── pnpm-workspace.yaml
+```
+
+Le code partagé (types d'événements, types de protocole, logique pure de game design, manifest typé) vit dans un sous-dossier `shared/` accessible aux deux packages.
+
+*Modalités précises à trancher au démarrage du repo (`spec/monorepo-setup`).*
+
+### Implications
+- Migration du repo actuel (single-package) vers `packages/front/` à prévoir.
+- Le `pnpm-workspace.yaml` doit déclarer les packages (et sera correctement formé cette fois — cf. l'incident PR #55).
+- Le code Phaser actuel devient `packages/front/`. Le serveur Node est un nouveau package.
+
+---
+
+## F17 — Source de vérité
+
+**Décidé le** : 12 mai 2026
+**Statut** : Acté
+
+### Décision
+**Le serveur est la source de vérité.** Le store de partie vit sur le serveur. Le Host et les Players sont des vues sur cet état, mis à jour par messages WebSocket. Voir aussi **D7 amendée**.
+
+### Implications
+- Les clients ne mutent rien localement — ils proposent des actions au serveur.
+- Le serveur valide (anti-triche), applique, diffuse l'événement de mise à jour à tous.
+- Pattern de **projection** côté client (`spec/store-projection`).
+
+---
+
+## F18 — Hébergement
+
+**Décidé le** : 12 mai 2026
+**Statut** : Acté
+
+### Décision
+**Vercel** pour le front statique (Host + Player) + **Fly.io** pour le serveur Node + WebSocket. Free tier suffisant pour tout le playtesting. Coût marginal (~5-10€/mois) après commercialisation. Le mode LAN est abandonné.
+
+### Implications
+- Vercel déjà connecté (https://multi-lines.vercel.app) — reste à reconfigurer post-migration F16.
+- Fly.io à provisionner pour le serveur ; CI/CD à câbler.
+- À spec : config de déploiement serveur, gestion des secrets, scaling.
+
+---
+
+## F19 — Framework UI Player
+
+**Décidé le** : 12 mai 2026
+**Statut** : Acté avec une marge de manœuvre
+
+### Décision
+**Décision différée au démarrage du Player.** Probablement vanilla TS + Web Components, ou framework léger (Lit, Preact). **Pas React** par défaut, pour rester cohérent avec la légèreté du projet, mais à confirmer.
+
+### Implications
+- À trancher dans une issue dédiée quand le dev du Player démarre.
+- La sortie ne doit pas être lourde côté smartphone (perf + connexion mobile).
+- Pas de SPA monstrueuse — chaque écran Player reste simple et stateful localement.
+
+---
+
+## F20 — Protocole réseau
+
+**Décidé le** : 12 mai 2026
+**Statut** : Acté
+
+### Décision
+**WebSocket + JSON.** Messages typés depuis le code partagé (`shared/`). Pattern :
+
+- **Actions du joueur** : Player → serveur (ex: `action.propose`)
+- **Événements de partie** : serveur → tous les clients (ex: `turn.started`, `state.updated`)
+- **Commandes Host** : Host → serveur (ex: `game.start`, `partie.end`)
+
+Détail dans `spec/protocole`.
+
+### Implications
+- Pas de gRPC ni de Protobuf — JSON est suffisant pour la taille de payload.
+- Tous les types de messages **typés** depuis `shared/` (cf. F16).
+- Le serveur fait la **validation** (anti-triche, ordre des messages, état attendu).
+
+---
+
+## Note sur F2 et F12-F15 (cohabitation)
+
+F2 acte « zones discrètes avec sprites vivants » (session 11 mai), et F12-F15 actent « map continue tile-based » (session 12 mai). Les deux peuvent sembler contradictoires.
+
+**Lecture cohérente** :
+
+- **F2** acte le **principe** : le jeu est organisé en zones thématiques avec des sprites animés qui leur donnent vie.
+- **F12-F15** actent la **mise en œuvre** : la map est continue tile-based, mais les zones thématiques sont conservées en arrière-plan logique (F14).
+
+Si une future session veut clarifier, on pourra fusionner F2 et F14 en une seule décision. Pour l'instant on les garde séparées car elles ont été actées à des moments différents et expriment des aspects complémentaires.
+
+---
+
+## Sujets à creuser dans `spec/`
+
+Plusieurs sujets sont actés dans l'esprit mais demandent une spec technique détaillée. À traiter au démarrage du dev correspondant :
+
+- **spec/protocole** — Format précis des messages WebSocket, gestion erreurs, reconnexion
+- **spec/server-state-machine** — Machine à états de la partie côté serveur, transitions, validations
+- **spec/connexion-qr** — Génération du QR, code de fallback, expiration, sécurité
+- **spec/store-projection** — Comment les clients construisent leurs projections depuis les événements serveur
+- **spec/monorepo-setup** — Configuration des workspaces pnpm, gestion du code partagé
+- **spec/portee-deplacement** — Combien de tiles par tour, modificateurs éventuels
+- **spec/sprite-drone-mouvement** — Le drone de l'Observateur a-t-il une mécanique de déplacement spécifique (drag) ou suit-il les mêmes règles que les avatars ?
+
+---
+
 ## Index des décisions
 
-| ID  | Sujet                                               | Statut |
-|-----|-----------------------------------------------------|--------|
-| D1  | Co-location des tests                               | Acté   |
-| D2  | Format des événements                               | Acté   |
-| D3  | Stratégie de couverture                             | Acté   |
-| D4  | Workflow Git                                        | Acté   |
-| D5  | Organisation des assets                             | Acté   |
-| D6  | Stratégie d'animations                              | Acté   |
-| D7  | State management                                    | Acté   |
-| D8  | Format du manifest                                  | Acté   |
-| G1  | Pilier mécanique (coop tendue → bascule)            | Acté   |
-| G2  | Système de résolution (choix + dé de risque)        | Acté   |
-| G3  | Acte 3 : vote secret simultané                      | Acté   |
-| G4  | Objectifs privés tordus                             | Acté   |
-| G5  | Tablette tournée occasionnelle                      | Acté   |
-| G6  | Coop sincère stricte pendant le casse               | Acté   |
-| G7  | 5e rôle = Observateur (drone)                       | Acté   |
-| G8  | Système de résolution chiffré (2d6 + tables)        | Acté   |
-| G9  | Pacte secret cadré en 3 templates                   | Acté   |
-| G10 | Objectifs privés vérifiés acte 3, récompense uniforme | Acté |
-| F1  | Schéma narratif assumé (plateau non réaliste)       | Acté   |
-| F2  | Zones discrètes avec sprites vivants                | Acté   |
-| F3  | Fog partiel                                         | Acté   |
-| F4  | Présence simultanée illimitée par zone              | Acté   |
-| F5  | Déplacement libre avant action                      | Acté   |
-| F6  | PNJ génériques sans individualité narrative         | Acté   |
-| F7  | Layout fixe pour le MVP                             | Acté   |
-| F8  | Tout sur un écran sans scroll                       | Acté   |
+| ID  | Famille      | Sujet                                                         | Statut |
+|-----|--------------|---------------------------------------------------------------|--------|
+| D1  | Tech         | Co-location des tests                                         | ✅ Acté |
+| D2  | Tech         | Format des événements                                         | ✅ Acté |
+| D3  | Tech         | Stratégie de couverture                                       | ✅ Acté |
+| D4  | Tech         | Workflow Git                                                  | ✅ Acté |
+| D5  | Tech         | Organisation des assets                                       | ✅ Acté |
+| D6  | Tech         | Stratégie d'animations                                        | ✅ Acté |
+| D7  | Tech         | State management (**source serveur**)                         | 🔄 Amendée 12/05 |
+| D8  | Tech         | Format du manifest                                            | ✅ Acté |
+| G1  | Game Design  | Pilier mécanique (coop tendue → bascule)                      | ✅ Acté |
+| G2  | Game Design  | Système de résolution (choix + dé de risque)                  | ✅ Acté |
+| G3  | Game Design  | Acte 3 : vote secret simultané                                | ✅ Acté |
+| G4  | Game Design  | Objectifs privés tordus                                       | ✅ Acté |
+| G5  | Game Design  | Information privée sur écran personnel (**smartphone**)       | 🔄 Amendée 12/05 |
+| G6  | Game Design  | Coop sincère stricte pendant le casse                         | ✅ Acté |
+| G7  | Game Design  | 5e rôle = Observateur (drone)                                 | ✅ Acté |
+| G8  | Game Design  | Système de résolution chiffré (2d6 + tables)                  | ✅ Acté |
+| G9  | Game Design  | Pacte secret cadré en 3 templates                             | ✅ Acté |
+| G10 | Game Design  | Objectifs privés vérifiés acte 3, récompense uniforme         | ✅ Acté |
+| F1  | Front        | Métaphore visuelle (généralisée)                              | 🔄 Amendée 12/05 |
+| F2  | Front        | Zones discrètes avec sprites vivants                          | ✅ Acté (cf. note F2/F14) |
+| F3  | Front        | Visibilité initiale (fog partiel reformulé)                   | 🔄 Amendée 12/05 |
+| F4  | Front        | ~~Présence simultanée illimitée~~                             | ❌ Abrogée 12/05 |
+| F5  | Front        | Coût du déplacement (tile-based)                              | 🔄 Amendée 12/05 |
+| F6  | Front        | PNJ génériques sans individualité narrative                   | ✅ Acté |
+| F7  | Front        | Layout fixe pour le MVP                                       | ✅ Acté |
+| F8  | Front        | Tout sur un écran sans scroll                                 | ✅ Acté |
+| F9  | Front        | Modèle de jeu (hybride Jackbox)                               | 🆕 12/05 |
+| F10 | Front        | Smartphone obligatoire (PWA + QR)                             | 🆕 12/05 |
+| F11 | Front        | Architecture réseau (serveur WebSocket cloud-only)            | 🆕 12/05 |
+| F12 | Front        | Granularité du déplacement (tile 32×32)                       | 🆕 12/05 |
+| F13 | Front        | Taille de la map (40×20 tiles)                                | 🆕 12/05 |
+| F14 | Front        | Zones mécaniques sur map continue                             | 🆕 12/05 |
+| F15 | Front        | Verrouillages physiques (portes + cadenas)                    | 🆕 12/05 |
+| F16 | Front        | Structure du projet (monorepo 2 packages)                     | 🆕 12/05 |
+| F17 | Front        | Source de vérité (serveur)                                    | 🆕 12/05 |
+| F18 | Front        | Hébergement (Vercel + Fly.io)                                 | 🆕 12/05 |
+| F19 | Front        | Framework UI Player (décision différée)                       | 🆕 12/05 |
+| F20 | Front        | Protocole réseau (WebSocket + JSON)                           | 🆕 12/05 |
 
 ---
 
