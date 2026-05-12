@@ -65,6 +65,12 @@ export function startServer(config = loadConfig()): {
 }
 
 // Auto-start uniquement quand on exécute le fichier directement (pas en tests).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Comparaison robuste Windows + POSIX via fileURLToPath.
+import { fileURLToPath } from 'node:url';
+const isMainModule =
+  typeof process !== 'undefined' &&
+  process.argv[1] !== undefined &&
+  process.argv[1] === fileURLToPath(import.meta.url);
+if (isMainModule) {
   startServer();
 }
