@@ -18,14 +18,25 @@ Composition selon le nombre de joueurs :
 - **5** : + Observateur (le seul rôle "extérieur")
 
 ## Statut
-Squelette jouable bout-en-bout (PoC). DA bible v1.0 figée — voir [`ART.md`](./ART.md).
-Sprites pixel art à produire en M2.
+Squelette PoC mono-device livré en M1. **Post-pivot Jackbox (12 mai 2026)** :
+- L'état de la partie passe **côté serveur** (D7 amendée, F17). Le singleton local
+  `state.ts` est archivé dans `archive/pre-pivot-jackbox-2026-05-12`.
+- La distribution des rôles et la révélation se feront via le serveur + smartphone
+  Player (G5 amendée, F10). Voir issues #41 (impl actions) et #61 (state machine serveur).
+- Le plateau passe en **map continue tile-based 40×20** (F12-F15). L'ancien `BoardScene`
+  (zones discrètes) est archivé.
 
-## Structure du dossier
+DA bible v1.0 figée — voir [`ART.md`](./ART.md). Sprites pixel art à produire en M2.
+
+## Structure du dossier (post-PR #68)
 - `manifest.ts` — métadonnées (titre, joueurs, durée, ton).
-- `index.ts` — implémentation du contrat `Adventure`.
-- `state.ts` — contexte de partie partagé entre les scènes Phaser.
-- `scenes/` — scènes Phaser (Entrée, Couloir, Coffre, Result).
-- `roles/` — types, définitions, distribution.
+- `index.ts` — implémentation du contrat `Adventure` (stub transitoire, refonte en Prompt 3).
+- `resolution.ts` — config 2d6 (G8) du résolveur de risque.
+- `roles/` — types + définitions des 5 rôles + algo de distribution (refonte côté serveur).
+- `objectives/` — 30 objectifs privés + algo de tirage (G10).
+- `pactes/` — types + 3 templates de Pacte secret (G9).
+- `scenes/` — placeholder Phaser : `ResultScene` uniquement (BoardScene archivé).
 - `assets/` — sprites, sons, dialogues (à produire en M2).
 - `ART.md` — direction artistique de l'aventure.
+
+> ⚠️ Note structurelle : post-merge de la PR #68, ce dossier vit à `packages/front/adventures/banque-lune/` (F16).

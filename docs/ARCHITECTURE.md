@@ -1,5 +1,15 @@
 # Architecture
 
+> ⚠️ **Document partiellement obsolète — pivot Jackbox du 12 mai 2026.**
+>
+> Le schéma ci-dessous décrit l'architecture **pré-pivot** (single-package, single-device). Suite au pivot :
+> - Le repo est devenu un **monorepo** (F16) avec `packages/front/` (clients web) + `packages/server/` (serveur Node — placeholder M1, à implémenter dans le Prompt 2).
+> - La **source de vérité passe côté serveur** (D7 amendée, F17). Les clients sont des projecteurs.
+> - Le modèle est **hybride Jackbox** : Host tablette + smartphone Player + serveur WebSocket cloud (F9-F11).
+> - Les "Points d'extension futurs" en bas du doc (Multi-écrans, Mode online) **sont devenus présents** post-pivot — ce ne sont plus des bouts à venir mais l'architecture cible.
+>
+> La séparation `core/adventures` reste valide à l'intérieur de `packages/front/`. Refonte complète du présent document prévue dans le **Prompt 3** (refonte front post-serveur). Voir aussi [`docs/FRONTEND.md`](./FRONTEND.md) qui détaille la spec front post-pivot.
+
 ## Principe directeur
 **Le moteur ne sait rien des aventures. Les aventures connaissent et utilisent le moteur.**
 
@@ -68,10 +78,13 @@ Cette règle, simple à formuler, est ce qui rend le projet pérenne. Si on resp
 
 ## Points d'extension futurs
 
-Listés ici **sans** implémentation. Chaque point ouvre une issue quand le moment vient.
+> ⚠️ **Les deux premiers points ci-dessous sont devenus présents post-pivot Jackbox** :
+> - "Multi-écrans" et "Mode online" → actés par F9-F11. Voir `docs/FRONTEND.md` et issues #60-#67.
+>
+> Les autres restent des perspectives.
 
-- **Multi-écrans** (téléphones individuels + tablette partagée pour la vue commune) — l'EventBus est déjà conçu pour, il suffira d'un transport WebSocket.
-- **Mode online** (parties à distance) — implique un serveur autoritatif et un protocole de sync ; la séparation core/aventure rend l'effort linéaire.
+- ~~**Multi-écrans** (téléphones individuels + tablette partagée pour la vue commune)~~ → **acté** F9, F10. En cours d'implémentation (chantier #67).
+- ~~**Mode online** (parties à distance)~~ → **acté** F11 (serveur WebSocket cloud-only). En cours d'implémentation.
 - **Profils joueurs persistants** (statistiques cross-aventures) — `SaveManager` est déjà découplé du contenu.
 - **Localisation** (i18n) — ajouter une couche de strings dans `core/` et un dictionnaire par aventure.
 - **Marketplace d'aventures** — chaque aventure étant un dossier autonome conforme au contrat, on peut imaginer un format de package téléchargeable.
