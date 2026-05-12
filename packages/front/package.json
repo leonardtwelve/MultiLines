@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@pixel-quests/shared": "workspace:*",
     "phaser": "^3.80.1"
   },
   "devDependencies": {
