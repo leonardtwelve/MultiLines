@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter front build",
+  "buildCommand": "pnpm --filter @pixel-quests/shared build && pnpm --filter front build",
   "outputDirectory": "packages/front/dist",
   "trailingSlash": false
 }
