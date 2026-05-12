@@ -1,4 +1,4 @@
-import type { AdventureManifest } from '../../core/types/adventure';
+import type { AdventureManifest } from '../../src/core/types/adventure';
 
 export const banqueLuneManifest: AdventureManifest = {
   id: 'banque-lune',

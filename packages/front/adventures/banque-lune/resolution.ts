@@ -1,4 +1,4 @@
-import type { RiskConfig } from '../../core/resolution';
+import type { RiskConfig } from '../../src/core/resolution';
 
 /**
  * Configuration du dé de risque pour le Casse de la Banque Lune (G8).

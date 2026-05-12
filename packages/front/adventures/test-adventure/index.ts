@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import type { Adventure } from '../../core/types/adventure';
-import type { GameEngine } from '../../core/engine/GameEngine';
-import type { GameState } from '../../core/state/GameState';
+import type { Adventure } from '../../src/core/types/adventure';
+import type { GameEngine } from '../../src/core/engine/GameEngine';
+import type { GameState } from '../../src/core/state/GameState';
 import { testAdventureManifest } from './manifest';
 
 class TestPlaceholderScene extends Phaser.Scene {

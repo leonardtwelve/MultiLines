@@ -3,7 +3,7 @@ import {
   distributeRoles,
   seededRandom,
   InvalidPlayerCountError,
-} from '../../../src/adventures/banque-lune/roles/distribute';
+} from '../../../adventures/banque-lune/roles/distribute';
 
 describe('distributeRoles', () => {
   it('refuse moins de 3 joueurs', () => {

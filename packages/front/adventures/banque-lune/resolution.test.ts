@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { rollRisk } from '../../core/resolution';
+import { rollRisk } from '../../src/core/resolution';
 import { banqueLuneRisk } from './resolution';
-import type { RiskLevel, ResolutionResult } from '../../core/resolution';
+import type { RiskLevel, ResolutionResult } from '../../src/core/resolution';
 
 /**
  * Vérifie que la grille du Casse Lune (§4.2) match les probabilités annoncées.

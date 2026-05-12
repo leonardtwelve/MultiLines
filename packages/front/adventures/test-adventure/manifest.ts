@@ -1,4 +1,4 @@
-import type { AdventureManifest } from '../../core/types/adventure';
+import type { AdventureManifest } from '../../src/core/types/adventure';
 
 /**
  * Aventure factice qui sert d'exemple pédagogique pour `docs/ADVENTURES_GUIDE.md`

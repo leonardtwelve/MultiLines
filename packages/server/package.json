@@ -1,0 +1,14 @@
+{
+  "name": "@pixel-quests/server",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Pixel Quests — serveur Node + WebSocket (placeholder, à implémenter dans le Prompt 2).",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Server not implemented yet — see Prompt 2.'",
+    "build": "echo 'Server not implemented yet — see Prompt 2.'",
+    "test": "echo 'Server not implemented yet — no tests yet.'",
+    "lint": "echo 'Server not implemented yet — no lint target yet.'",
+    "typecheck": "tsc --noEmit"
+  }
+}
