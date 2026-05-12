@@ -10,7 +10,7 @@
 // (rendu Phaser + connexion WebSocket + projection store) dans le Prompt 3.
 
 import Phaser from 'phaser';
-import { EventBus } from './EventBus';
+import { EventBus } from '@pixel-quests/shared/events';
 import { SceneManager } from './SceneManager';
 import { PlayerManager } from '../players/PlayerManager';
 import { SaveManager } from '../persistence/SaveManager';

@@ -805,27 +805,35 @@ Les passages entre zones verrouillées sont représentés par des **portes physi
 ## F16 — Structure du projet
 
 **Décidé le** : 12 mai 2026
+**Amendé le** : 13 mai 2026 (passage de 2 à 3 packages, shared/ devient un package à part entière)
 **Statut** : Acté
 
-### Décision
-**Monorepo à 2 packages** :
+### Décision (amendée)
+**Monorepo à 3 packages** :
 
 ```
 pixel-quests/
 ├── packages/
 │   ├── front/     # Clients web : Host (tablette) + Player (smartphone)
-│   └── server/    # Serveur Node + WebSocket
+│   ├── server/    # Serveur Node + WebSocket (socket.io, cf. F21)
+│   └── shared/    # Types, protocole, logique pure de game design, EventBus typé
 └── pnpm-workspace.yaml
 ```
 
-Le code partagé (types d'événements, types de protocole, logique pure de game design, manifest typé) vit dans un sous-dossier `shared/` accessible aux deux packages.
+Le package `shared/` est consommé par `front/` et `server/` via pnpm workspaces (`@pixel-quests/shared` en dépendance interne). Source de vérité unique pour les types d'événements (D2), le protocole WebSocket (F20), et toute logique pure réutilisable entre les deux côtés du réseau.
 
-*Modalités précises à trancher au démarrage du repo (`spec/monorepo-setup`).*
+### Raison de l'amendement (13 mai 2026)
+La formulation initiale parlait d'un *sous-dossier* `shared/`. Au moment de l'implémenter (Prompt 2), la promotion en **package à part entière** s'est imposée :
+- pnpm workspaces gère nativement le link symbolique via `workspace:*`
+- TypeScript compile une fois (`tsup`) avec des `.d.ts` propres consommés par les autres packages
+- ESLint, tests, build sont isolés par package — pas de surface attaque cross-cutting
 
 ### Implications
-- Migration du repo actuel (single-package) vers `packages/front/` à prévoir.
-- Le `pnpm-workspace.yaml` doit déclarer les packages (et sera correctement formé cette fois — cf. l'incident PR #55).
-- Le code Phaser actuel devient `packages/front/`. Le serveur Node est un nouveau package.
+- Le `pnpm-workspace.yaml` déclare `packages/*` — couvre les 3 packages automatiquement.
+- `front` et `server` déclarent `"@pixel-quests/shared": "workspace:*"` en dépendance.
+- `shared/` est buildé en premier dans la CI (les autres en dépendent).
+- Les types d'événements `GameEvent` (D2) + le bus typé `EventBus` vivent désormais dans `@pixel-quests/shared/events`.
+- Les types de messages WebSocket (F20) vivent dans `@pixel-quests/shared/protocol`.
 
 ---
 
@@ -895,6 +903,31 @@ Détail dans `spec/protocole`.
 
 ---
 
+## F21 — Bibliothèque WebSocket
+
+**Décidé le** : 13 mai 2026
+**Statut** : Acté
+
+### Décision
+**socket.io** (côté serveur ET côté clients).
+
+Rooms natives, reconnexion automatique, heartbeat, fallback HTTP long-poll, événements typés. Préféré à `ws` brut pour éviter de recoder ces mécaniques à la main.
+
+### Pourquoi
+- **Rooms** natives : map les rooms socket.io 1:1 avec nos `Room` (game lobby), broadcast trivial vers tous les sockets d'une room.
+- **Reconnexion** automatique avec backoff exponentiel — critique pour le smartphone Player (réseau mobile capricieux).
+- **Heartbeat** intégré, pas de garde-fou à écrire.
+- **Fallback HTTP long-poll** : robustesse sur les réseaux d'entreprise / wifi corporate qui bloquent WebSocket.
+- Écosystème mature, types officiels, `socket.io-client` côté Player + Host.
+
+### Implications
+- `socket.io@^4` côté serveur (`packages/server`).
+- `socket.io-client@^4` côté front (`packages/front` — à ajouter quand l'intégration commence, Prompt 3) et en devDep côté serveur pour les tests d'intégration.
+- Le protocole F20 (messages JSON typés depuis `@pixel-quests/shared/protocol`) reste agnostique de la lib transport — si on devait migrer plus tard vers `ws` ou un autre, l'effort se concentre sur la couche socket.io adapter.
+- Coût négligeable côté bundle Player (~50 kB gzipped).
+
+---
+
 ## Note sur F2 et F12-F15 (cohabitation)
 
 F2 acte « zones discrètes avec sprites vivants » (session 11 mai), et F12-F15 actent « map continue tile-based » (session 12 mai). Les deux peuvent sembler contradictoires.
@@ -959,11 +992,12 @@ Plusieurs sujets sont actés dans l'esprit mais demandent une spec technique dé
 | F13 | Front        | Taille de la map (40×20 tiles)                                | 🆕 12/05 |
 | F14 | Front        | Zones mécaniques sur map continue                             | 🆕 12/05 |
 | F15 | Front        | Verrouillages physiques (portes + cadenas)                    | 🆕 12/05 |
-| F16 | Front        | Structure du projet (monorepo 2 packages)                     | 🆕 12/05 |
+| F16 | Front        | Structure du projet (monorepo **3 packages** : front, server, shared) | 🔄 Amendée 13/05 |
 | F17 | Front        | Source de vérité (serveur)                                    | 🆕 12/05 |
 | F18 | Front        | Hébergement (Vercel + Fly.io)                                 | 🆕 12/05 |
 | F19 | Front        | Framework UI Player (décision différée)                       | 🆕 12/05 |
 | F20 | Front        | Protocole réseau (WebSocket + JSON)                           | 🆕 12/05 |
+| F21 | Front        | Bibliothèque WebSocket (socket.io)                            | 🆕 13/05 |
 
 ---
 
