@@ -1,5 +1,15 @@
 # Guide des aventures — Pixel Quests
 
+> ⚠️ **Document à mettre à jour post-pivot Jackbox (12 mai 2026).**
+>
+> Ce guide a été écrit avant le pivot vers l'architecture monorepo + serveur autoritaire. Plusieurs sections sont obsolètes :
+> - Les chemins (`src/core/`, `src/adventures/`) sont devenus `packages/front/src/core/` et `packages/front/adventures/` (F16).
+> - Les **actions** des rôles ne mutent plus un store local — elles deviennent des **intents** envoyés au serveur via WebSocket (D7 amendée, F17, F20). Voir §5 sections `engine.store`, `engine.turns` qui sont obsolètes.
+> - L'**information privée** ne passe plus par la tablette (`engine.privateView` obsolète) mais par le **smartphone du joueur** (G5 amendée, F10).
+> - Le **plateau** passe en map continue tile-based (F12-F15) — les zones discrètes du PoC sont archivées.
+>
+> Refonte complète prévue dans le **Prompt 3** (refonte front post-serveur). En attendant, ce document garde sa valeur historique sur les principes (contrat `Adventure`, séparation `core/adventures`, manifest, cycle de vie).
+
 Mode d'emploi opérationnel pour créer et maintenir une aventure.
 Cible : un développeur qui n'a **jamais lu le code du moteur**. Si à un endroit ce guide t'oblige à plonger dans `src/core/`, c'est que le guide a un trou — corrige-le.
 
@@ -134,7 +144,13 @@ declare module '../../core/types/events' {
 ```
 Conventions : `<adventure-id>.<verb-passé>` lowercase. Voir D2.
 
-### `engine.store: Store` (voir D7)
+### ⚠️ `engine.store: Store` (voir D7) — **OBSOLÈTE POST-PIVOT**
+
+> D7 amendée : la source de vérité passe **côté serveur** (F17). `engine.store` côté client est archivé. La nouvelle API sera un **projecteur** qui lit la projection serveur via WebSocket. Voir issue #63 (spec/store-projection).
+>
+> Le code ci-dessous reflète l'ancienne API et sera refondu dans le Prompt 3.
+
+
 
 Source unique de vérité de la partie. Lire :
 ```typescript
@@ -169,7 +185,11 @@ engine.players.get('p1');       // Player | undefined
 engine.players.count();         // number
 ```
 
-### `engine.turns: TurnSystem`
+### ⚠️ `engine.turns: TurnSystem` — **OBSOLÈTE POST-PIVOT**
+
+> F17 : la logique de tour vit côté serveur (TurnSystem archivé). Le client reçoit des events `turn.started` / `turn.ended` (D2) émis par le serveur. Voir issue #61 (spec/server-state-machine).
+
+
 
 Tour par tour minimal. Démarrer une partie :
 ```typescript
@@ -181,7 +201,13 @@ engine.turns.next();                     // avance, retourne le nouveau playerId
 engine.turns.round();                    // numéro de manche
 ```
 
-### `engine.privateView: PrivateView`
+### ⚠️ `engine.privateView: PrivateView` — **OBSOLÈTE POST-PIVOT**
+
+> G5 amendée : l'information privée ne passe plus par la tablette (PrivateView/DomPrivateView archivés) mais par le **smartphone du joueur** (F10). La tablette n'affiche jamais d'info privée.
+>
+> La nouvelle UI privée vit dans le Player smartphone (`packages/front/src/player/`, à implémenter dans le Prompt 3). Voir issue #62 (spec/connexion-qr).
+
+
 
 "Tour son écran" — info ou choix privé. Voir [`src/core/ui/PrivateView.ts`](../src/core/ui/PrivateView.ts).
 
