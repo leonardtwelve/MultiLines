@@ -24,17 +24,41 @@ jobs:
       - name: Install dependencies (workspace)
         run: pnpm install --frozen-lockfile
 
-      - name: Lint (root ESLint covers all packages)
-        run: pnpm run lint:front
+      # ---- Build shared en premier (front et server en dépendent) ----
+      - name: Build — shared
+        run: pnpm --filter @pixel-quests/shared build
+
+      - name: Lint — shared
+        run: pnpm --filter @pixel-quests/shared lint
+
+      - name: Typecheck — shared
+        run: pnpm --filter @pixel-quests/shared typecheck
+
+      - name: Test — shared
+        run: pnpm --filter @pixel-quests/shared test
+
+      # ---- Front ----
+      - name: Lint — front
+        run: pnpm --filter front lint
 
       - name: Typecheck — front
-        run: pnpm run typecheck:front
+        run: pnpm --filter front typecheck
 
       - name: Test — front
-        run: pnpm run test:front
+        run: pnpm --filter front test
 
       - name: Build — front
-        run: pnpm run build:front
+        run: pnpm --filter front build
 
-      # Le serveur est un placeholder pour l'instant — pas de lint/test/build
-      # significatifs. Sera réactivé dans le Prompt 2.
+      # ---- Server ----
+      - name: Lint — server
+        run: pnpm --filter @pixel-quests/server lint
+
+      - name: Typecheck — server
+        run: pnpm --filter @pixel-quests/server typecheck
+
+      - name: Test — server
+        run: pnpm --filter @pixel-quests/server test
+
+      - name: Build — server
+        run: pnpm --filter @pixel-quests/server build

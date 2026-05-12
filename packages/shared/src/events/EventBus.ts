@@ -1,4 +1,4 @@
-import type { GameEvent } from '../types/events';
+import type { GameEvent } from './core-events';
 
 type EventType = GameEvent['type'];
 type PayloadFor<T extends EventType> = Extract<GameEvent, { type: T }>['payload'];
