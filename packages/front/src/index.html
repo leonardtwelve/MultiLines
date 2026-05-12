@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pixel Quests</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0d10;
+        --bg-card: #161a1f;
+        --bg-card-hover: #1d222a;
+        --border: #2a2f36;
+        --fg: #e6e8eb;
+        --fg-muted: #a0a4ab;
+        --accent: #ffcc66;
+        --danger: #dc2363;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: 'Courier New', monospace;
+        background: var(--bg);
+        color: var(--fg);
+        min-height: 100vh;
+      }
+      button {
+        font-family: inherit;
+        cursor: pointer;
+      }
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+      #app {
+        padding: 2rem;
+        max-width: 960px;
+        margin: 0 auto;
+      }
+
+      /* HomeScreen */
+      .home__title { font-size: 3rem; margin: 0 0 .5rem; color: var(--accent); }
+      .home__subtitle { opacity: .8; margin: 0 0 2rem; }
+      .home__section { font-size: 1.25rem; margin-top: 2rem; }
+      .adventures { list-style: none; padding: 0; display: grid; gap: 1rem; }
+      .adventure-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.25rem;
+      }
+      .adventure-card h3 { margin: 0 0 .5rem; color: var(--accent); }
+      .adventure-card .meta { font-size: .85rem; opacity: .7; }
+      .adventure-card button {
+        background: var(--accent);
+        color: var(--bg);
+        border: 0;
+        padding: .6rem 1.2rem;
+        font-weight: bold;
+        border-radius: 4px;
+        margin-top: .5rem;
+      }
+      .adventure-card button:hover { background: #ffd98a; }
+
+      /* SetupScreen */
+      .setup__title { font-size: 2rem; margin: 0 0 .5rem; color: var(--accent); }
+      .setup__subtitle { opacity: .7; margin: 0 0 1.5rem; }
+      .setup__players { display: flex; flex-direction: column; gap: .75rem; margin-bottom: 1rem; }
+      .setup__row {
+        display: flex; align-items: center; gap: .75rem;
+        background: var(--bg-card); border: 1px solid var(--border);
+        padding: .75rem; border-radius: 6px;
+      }
+      .setup__name {
+        flex: 1; min-width: 0;
+        background: var(--bg); border: 1px solid var(--border);
+        color: var(--fg); padding: .5rem .75rem;
+        font-family: inherit; font-size: 1rem; border-radius: 4px;
+      }
+      .setup__colors { display: flex; gap: .25rem; }
+      .setup__swatch {
+        width: 24px; height: 24px; border-radius: 50%;
+        border: 2px solid transparent;
+      }
+      .setup__swatch--active { border-color: var(--fg); }
+      .setup__remove {
+        background: transparent; color: var(--fg-muted);
+        border: 1px solid var(--border); width: 32px; height: 32px;
+        border-radius: 4px;
+      }
+      .setup__remove:hover:not(:disabled) { color: var(--danger); border-color: var(--danger); }
+      .setup__controls { display: flex; gap: .5rem; margin-bottom: 1rem; }
+      .setup__add, .setup__secondary {
+        background: transparent; border: 1px solid var(--border);
+        color: var(--fg); padding: .5rem 1rem; border-radius: 4px;
+      }
+      .setup__add:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+      .setup__warning { color: var(--danger); margin: 0 0 1rem; font-size: .9rem; }
+      .setup__start {
+        width: 100%; background: var(--accent); color: var(--bg);
+        border: 0; padding: .9rem; font-size: 1rem; font-weight: bold;
+        border-radius: 4px;
+      }
+      .setup__start:hover:not(:disabled) { background: #ffd98a; }
+
+      /* PrivateView overlay */
+      .private-view {
+        position: fixed; inset: 0;
+        background: rgba(11, 13, 16, 0.97);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000; padding: 2rem;
+        --accent: var(--accent, #ffcc66);
+      }
+      .private-view__inner {
+        background: var(--bg-card);
+        border: 2px solid var(--accent);
+        border-radius: 8px;
+        padding: 2rem;
+        max-width: 480px; width: 100%;
+        text-align: center;
+      }
+      .private-view__invite-title { font-size: 1.6rem; color: var(--accent); margin: 0 0 .5rem; }
+      .private-view__hint { color: var(--fg-muted); margin: 0 0 1.5rem; font-size: .9rem; }
+      .private-view__who { color: var(--fg-muted); margin: 0 0 .5rem; font-size: .85rem; }
+      .private-view__title { color: var(--accent); font-size: 1.8rem; margin: 0 0 1rem; }
+      .private-view__body { color: var(--fg); margin: 0 0 1.5rem; line-height: 1.5; white-space: pre-line; }
+      .private-view__primary {
+        background: var(--accent); color: var(--bg);
+        border: 0; padding: .8rem 1.5rem;
+        font-weight: bold; font-size: 1rem; border-radius: 4px; width: 100%;
+      }
+      .private-view__primary:hover { filter: brightness(1.1); }
+      .private-view__choices { display: flex; flex-direction: column; gap: .5rem; }
+      .private-view__choice {
+        background: var(--bg); color: var(--fg);
+        border: 1px solid var(--border);
+        padding: .9rem 1rem; border-radius: 4px;
+        text-align: left;
+        display: flex; flex-direction: column; gap: .25rem;
+      }
+      .private-view__choice:hover { border-color: var(--accent); }
+      .private-view__choice--danger { border-color: var(--danger); color: var(--danger); }
+      .private-view__choice--danger:hover { background: rgba(220, 35, 99, 0.1); }
+      .private-view__choice-label { font-weight: bold; }
+      .private-view__choice-hint { font-size: .8rem; color: var(--fg-muted); }
+
+      /* Phaser game container + loading */
+      #game { width: 100%; height: 100vh; }
+      .loading {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--fg-muted); font-size: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="./host/main.ts"></script>
+  </body>
+</html>

@@ -21,17 +21,20 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - name: Install dependencies
+      - name: Install dependencies (workspace)
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm run lint
+      - name: Lint (root ESLint covers all packages)
+        run: pnpm run lint:front
 
-      - name: Typecheck
-        run: pnpm run typecheck
+      - name: Typecheck — front
+        run: pnpm run typecheck:front
 
-      - name: Test
-        run: pnpm run test
+      - name: Test — front
+        run: pnpm run test:front
 
-      - name: Build
-        run: pnpm run build
+      - name: Build — front
+        run: pnpm run build:front
+
+      # Le serveur est un placeholder pour l'instant — pas de lint/test/build
+      # significatifs. Sera réactivé dans le Prompt 2.

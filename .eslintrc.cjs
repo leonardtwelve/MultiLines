@@ -28,7 +28,9 @@ module.exports = {
     {
       // Garde-fou architectural : core/ ne doit RIEN savoir des aventures.
       // Voir docs/ARCHITECTURE.md.
-      files: ['src/core/**/*.ts'],
+      // Garde-fou architectural post-monorepo (F16) :
+      // packages/front/src/core/ ne doit RIEN savoir des aventures.
+      files: ['packages/front/src/core/**/*.ts'],
       rules: {
         'no-restricted-imports': [
           'error',
@@ -37,7 +39,7 @@ module.exports = {
               {
                 group: ['**/adventures/**', '**/adventures', '../adventures*', '../../adventures*'],
                 message:
-                  "src/core/ ne doit pas importer depuis src/adventures/. Le moteur ne sait rien des aventures.",
+                  "packages/front/src/core/ ne doit pas importer depuis packages/front/adventures/. Le moteur ne sait rien des aventures.",
               },
             ],
           },
