@@ -1,3 +1,10 @@
+// ⚠️ POST-PIVOT JACKBOX — refonte prévue Prompt 3.
+// La structure `actionsByRoom` (héritée du PoC 3-pièces) est obsolète : le
+// gameplay v2 GAMEPLAY.md décrit 3 actions par rôle (pas par room) + un dé
+// 2d6. Les implémentations qui mutent un état local seront refondues en
+// **intents** émis vers le serveur (F17, F20). Voir issues #38 (stubs des
+// rôles) et #41 (impl actions).
+
 import type { Role, RoleId } from './types';
 
 const honest = (id: string, label: string, outcome: string): { id: string; label: string; outcome: string } => ({

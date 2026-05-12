@@ -1,64 +1,48 @@
+// ⚠️ POST-PIVOT JACKBOX — refonte prévue Prompt 3.
+// La forme actuelle (orchestrateur Phaser + store local + privateView) est
+// le moteur du PoC mono-device. Suite au pivot :
+//   - le Store passe côté serveur (D7 amendée, F17) — `initStore`/`store`
+//     supprimés ci-dessous, le client travaillera avec une **projection** (#63)
+//   - PrivateView (tablette tournée) est obsolète (G5 amendée) — l'info
+//     privée passe sur smartphone Player (F10)
+//   - TurnSystem côté client est obsolète (F17 : logique serveur)
+// Le GameEngine sera vraisemblablement refondu en un orchestrateur Host
+// (rendu Phaser + connexion WebSocket + projection store) dans le Prompt 3.
+
 import Phaser from 'phaser';
 import { EventBus } from './EventBus';
 import { SceneManager } from './SceneManager';
 import { PlayerManager } from '../players/PlayerManager';
-import { TurnSystem } from '../players/TurnSystem';
 import { SaveManager } from '../persistence/SaveManager';
 import { AudioManager } from '../audio/AudioManager';
-import type { PrivateView } from '../ui/PrivateView';
-import { DomPrivateView } from '../ui/DomPrivateView';
-import { Store } from '../state/Store';
-import type { GameState } from '../state/GameState';
 
 export interface GameEngineConfig {
   parent: HTMLElement;
   width: number;
   height: number;
-  /** PrivateView injectable (par défaut : DomPrivateView monté sur document.body). */
-  privateView?: PrivateView;
 }
 
 /**
- * Orchestrateur du moteur générique. Détient les services partagés (joueurs, tour,
- * sauvegarde, audio, événements, store, vue privée) et démarre Phaser une fois
- * les scènes enregistrées par l'aventure courante.
+ * Orchestrateur du moteur générique. Détient les services partagés (joueurs,
+ * sauvegarde, audio, événements) et démarre Phaser une fois les scènes
+ * enregistrées par l'aventure courante.
+ *
+ * ⚠️ Statut post-migration monorepo : services `turns`, `privateView`, `store`
+ * retirés (archivés / refondus côté serveur). Le moteur est temporairement
+ * réduit aux services restants. Refonte intégrale dans Prompt 3.
  */
 export class GameEngine {
   readonly events = new EventBus();
   readonly scenes = new SceneManager();
   readonly players = new PlayerManager();
-  readonly turns: TurnSystem;
   readonly save = new SaveManager();
   readonly audio = new AudioManager();
-  readonly privateView: PrivateView;
 
-  private _store: Store | null = null;
   private game: Phaser.Game | null = null;
   private readonly config: GameEngineConfig;
 
   constructor(config: GameEngineConfig) {
     this.config = config;
-    this.turns = new TurnSystem(this.players);
-    this.privateView = config.privateView ?? new DomPrivateView();
-  }
-
-  /**
-   * Initialise le store de partie. Doit être appelé avant `adventure.init()`
-   * (le store est en lecture pour `adventure.start(initialState)`).
-   */
-  initStore(initial: GameState): Store {
-    if (this._store) {
-      throw new Error('GameEngine.initStore : store déjà initialisé.');
-    }
-    this._store = new Store(initial, this.events);
-    return this._store;
-  }
-
-  get store(): Store {
-    if (!this._store) {
-      throw new Error('GameEngine.store : non initialisé. Appelle initStore(...) avant.');
-    }
-    return this._store;
   }
 
   start(): void {
@@ -78,11 +62,9 @@ export class GameEngine {
   }
 
   stop(): void {
-    this.privateView.close();
     this.game?.destroy(true);
     this.game = null;
     this.events.clear();
     this.scenes.clear();
-    this._store = null;
   }
 }

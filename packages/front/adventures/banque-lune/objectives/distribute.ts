@@ -1,3 +1,8 @@
+// ⚠️ POST-PIVOT JACKBOX — refonte prévue Prompt 3.
+// Le tirage des objectifs privés (G10) est désormais une opération **côté
+// serveur** (F17). Le client reçoit son objectif privé sur smartphone (G5
+// amendée) via un message dédié.
+
 import type { Objective } from './types';
 import type { RoleId } from '../roles/types';
 import { BLOCKING_PAIRS, OBJECTIVES_BY_ROLE } from './definitions';

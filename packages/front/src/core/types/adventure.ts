@@ -1,3 +1,16 @@
+// ⚠️ POST-PIVOT JACKBOX (12 mai 2026)
+// ----------------------------------------------------------------------------
+// Les **actions** déclarées par les aventures vont devenir des **intents**
+// envoyés au serveur via WebSocket (D7 amendée, F17, F20). Le contrat
+// `Adventure` ci-dessous garde son typage actuel pour la migration monorepo,
+// mais sera refondu dans le **Prompt 3** :
+//   - `start(initialState)` recevra l'état initial produit par le serveur, pas
+//     par un store client (D7 amendée).
+//   - Les méthodes des rôles qui mutent un store local doivent devenir des
+//     émetteurs d'intent vers le serveur autoritaire.
+// Voir aussi `docs/ADVENTURES_GUIDE.md` (header post-pivot).
+// ----------------------------------------------------------------------------
+
 import type { GameEngine } from '../engine/GameEngine';
 import type { GameState } from '../state/GameState';
 

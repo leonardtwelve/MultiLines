@@ -1,3 +1,8 @@
+// ⚠️ POST-PIVOT JACKBOX — refonte prévue Prompt 3.
+// La distribution des rôles est désormais une opération **côté serveur**
+// (F17 : source de vérité autoritaire). Le client peut conserver une copie
+// déterministe pour des tests, mais le serveur arbitre en partie réelle.
+
 import type { Role, RoleId } from './types';
 import { ROLES } from './index';
 
