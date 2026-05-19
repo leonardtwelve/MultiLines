@@ -4,6 +4,12 @@ export interface HomeScreenProps {
   root: HTMLElement;
   adventures: readonly Adventure[];
   onSelect: (adventure: Adventure) => void;
+  /**
+   * Mode multijoueur en ligne (pivot Jackbox, post-Prompt 3a). Optionnel
+   * pour rester rétro-compatible avec le PoC mono-device tant que la
+   * refonte n'est pas terminée (Prompt 3b/c).
+   */
+  onStartMultiplayer?: (adventure: Adventure) => void;
 }
 
 /**
@@ -15,7 +21,7 @@ export class HomeScreen {
   constructor(private readonly props: HomeScreenProps) {}
 
   render(): void {
-    const { root, adventures, onSelect } = this.props;
+    const { root, adventures, onSelect, onStartMultiplayer } = this.props;
     root.innerHTML = '';
 
     const wrapper = document.createElement('div');
@@ -40,14 +46,18 @@ export class HomeScreen {
     list.className = 'adventures';
 
     for (const adventure of adventures) {
-      list.appendChild(this.buildCard(adventure, onSelect));
+      list.appendChild(this.buildCard(adventure, onSelect, onStartMultiplayer));
     }
 
     wrapper.appendChild(list);
     root.appendChild(wrapper);
   }
 
-  private buildCard(adventure: Adventure, onSelect: (a: Adventure) => void): HTMLLIElement {
+  private buildCard(
+    adventure: Adventure,
+    onSelect: (a: Adventure) => void,
+    onStartMultiplayer?: (a: Adventure) => void,
+  ): HTMLLIElement {
     const m = adventure.manifest;
     const card = document.createElement('li');
     card.className = 'adventure-card';
@@ -65,11 +75,27 @@ export class HomeScreen {
     meta.textContent = `${m.minPlayers}-${m.maxPlayers} joueurs · ~${m.estimatedDurationMin} min · ton ${m.tone}`;
     card.appendChild(meta);
 
+    const actions = document.createElement('div');
+    actions.className = 'adventure-card__actions';
+
     const button = document.createElement('button');
     button.type = 'button';
-    button.textContent = 'Lancer';
+    button.className = 'adventure-card__primary';
+    button.textContent = 'Lancer (mono-device)';
     button.addEventListener('click', () => onSelect(adventure));
-    card.appendChild(button);
+    actions.appendChild(button);
+
+    if (onStartMultiplayer) {
+      const mp = document.createElement('button');
+      mp.type = 'button';
+      mp.className = 'adventure-card__multiplayer';
+      mp.dataset.testid = 'start-multiplayer';
+      mp.textContent = '📱 Lancer en multijoueur';
+      mp.addEventListener('click', () => onStartMultiplayer(adventure));
+      actions.appendChild(mp);
+    }
+
+    card.appendChild(actions);
 
     return card;
   }
