@@ -4,9 +4,11 @@ import type { GameEngine } from '../../src/core/engine/GameEngine';
 import type { GameState } from '../../src/core/state/GameState';
 import { testAdventureManifest } from './manifest';
 
+const TEST_SCENE_KEY = 'test-adventure:placeholder';
+
 class TestPlaceholderScene extends Phaser.Scene {
   constructor() {
-    super('test-adventure:placeholder');
+    super(TEST_SCENE_KEY);
   }
 
   create(): void {
@@ -22,6 +24,8 @@ class TestPlaceholderScene extends Phaser.Scene {
   }
 }
 
+let engineRef: GameEngine | null = null;
+
 /**
  * Implémentation minimale du contrat `Adventure`. Sert d'exemple de référence
  * pour le tutoriel "Créer une aventure en 30 minutes" (`ADVENTURES_GUIDE.md`).
@@ -30,14 +34,15 @@ export const testAdventure: Adventure = {
   manifest: testAdventureManifest,
 
   async init(engine: GameEngine): Promise<void> {
-    engine.scenes.add(TestPlaceholderScene);
+    engineRef = engine;
+    engine.scenes.add(TEST_SCENE_KEY, TestPlaceholderScene);
   },
 
   start(_initialState: Readonly<GameState>): void {
-    // Phaser démarre la scène placeholder automatiquement.
+    engineRef?.startScene(TEST_SCENE_KEY);
   },
 
   destroy(): void {
-    // Rien à nettoyer pour cette aventure factice.
+    engineRef = null;
   },
 };
