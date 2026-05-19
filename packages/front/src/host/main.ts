@@ -12,6 +12,9 @@ import { GameEngine } from '../core/engine/GameEngine';
 import { SaveManager } from '../core/persistence/SaveManager';
 import { HomeScreen } from './HomeScreen';
 import { SetupScreen } from './SetupScreen';
+import { HostLobbyScreen } from './lobby/HostLobbyScreen';
+import { SocketClient } from '../network/SocketClient';
+import { getServerUrl } from '../network/env';
 import { banqueLuneAdventure } from '../../adventures/banque-lune';
 import type { Adventure } from '../core/types/adventure';
 import type { Player } from '../core/players/Player';
@@ -28,8 +31,9 @@ const save = new SaveManager();
 
 let currentEngine: GameEngine | null = null;
 let currentAdventure: Adventure | null = null;
+let currentLobby: HostLobbyScreen | null = null;
 
-function showHome(): void {
+function cleanupActive(): void {
   if (currentAdventure) {
     currentAdventure.destroy();
     currentAdventure = null;
@@ -38,12 +42,45 @@ function showHome(): void {
     currentEngine.stop();
     currentEngine = null;
   }
+  if (currentLobby) {
+    currentLobby.destroy();
+    currentLobby = null;
+  }
+}
+
+function showHome(): void {
+  cleanupActive();
   root!.innerHTML = '';
   new HomeScreen({
     root: root!,
     adventures,
     onSelect: (adventure) => showSetup(adventure),
+    onStartMultiplayer: (adventure) => showLobby(adventure),
   }).render();
+}
+
+function showLobby(adventure: Adventure): void {
+  cleanupActive();
+  root!.innerHTML = '';
+  const client = new SocketClient({ url: getServerUrl() });
+  const lobby = new HostLobbyScreen({
+    root: root!,
+    client,
+    adventureId: adventure.manifest.id,
+    // Le QR pointe le front (/play.html), pas le serveur. On utilise
+    // l'origine courante — fonctionne aussi bien en dev (localhost:5173)
+    // qu'en prod (multi-lines.vercel.app).
+    joinBaseUrl: new URL('play.html', window.location.origin).toString(),
+    onCancel: () => showHome(),
+    onStartGame: ({ roomId, players }) => {
+      // TODO Prompt 3b/c : démarrer effectivement l'aventure côté serveur,
+      // attendre `game.started`, projeter le state.
+      // eslint-disable-next-line no-console
+      console.log('[host] start game', { roomId, players });
+    },
+  });
+  currentLobby = lobby;
+  void lobby.render();
 }
 
 function showSetup(adventure: Adventure): void {

@@ -145,6 +145,96 @@
       .private-view__choice-label { font-weight: bold; }
       .private-view__choice-hint { font-size: .8rem; color: var(--fg-muted); }
 
+      /* HomeScreen — actions multijoueur */
+      .adventure-card__actions {
+        display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem;
+      }
+      .adventure-card__primary {
+        background: var(--accent); color: var(--bg);
+        border: 0; padding: .6rem 1.2rem;
+        font-weight: bold; border-radius: 4px;
+      }
+      .adventure-card__primary:hover { background: #ffd98a; }
+      .adventure-card__multiplayer {
+        background: transparent; color: var(--accent);
+        border: 1px solid var(--accent);
+        padding: .6rem 1.2rem; border-radius: 4px;
+        font-weight: bold;
+      }
+      .adventure-card__multiplayer:hover { background: rgba(255, 204, 102, .12); }
+
+      /* Lobby — écran multijoueur (Host) */
+      .lobby { max-width: 880px; margin: 0 auto; padding: 0 .5rem; }
+      .lobby__header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 1.25rem;
+      }
+      .lobby__back {
+        background: transparent; color: var(--fg-muted);
+        border: 1px solid var(--border);
+        padding: .5rem 1rem; border-radius: 4px;
+      }
+      .lobby__back:hover { color: var(--fg); border-color: var(--fg); }
+      .lobby__status {
+        font-size: .9rem; color: var(--fg-muted);
+        padding: .25rem .75rem;
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: 999px;
+      }
+      .lobby__title { color: var(--accent); margin: 0 0 .5rem; font-size: 2rem; }
+      .lobby__hint { color: var(--fg-muted); margin: 0 0 1.5rem; }
+      .lobby__share {
+        display: grid; grid-template-columns: 1fr auto;
+        gap: 2rem; align-items: center;
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;
+      }
+      @media (max-width: 640px) {
+        .lobby__share { grid-template-columns: 1fr; text-align: center; }
+      }
+      .lobby__code-label {
+        font-size: .85rem; color: var(--fg-muted);
+        text-transform: uppercase; letter-spacing: .1em; margin-bottom: .5rem;
+      }
+      .lobby__code {
+        font-size: 3rem; font-weight: bold; color: var(--accent);
+        font-family: 'Courier New', monospace; letter-spacing: .05em;
+        margin: 0 0 .75rem;
+      }
+      .lobby__url {
+        color: var(--fg-muted); font-size: .85rem;
+        word-break: break-all; text-decoration: underline;
+      }
+      .lobby__qr {
+        background: white; padding: .5rem; border-radius: 8px;
+        width: 240px; height: 240px;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .lobby__qr-img { width: 100%; height: 100%; image-rendering: pixelated; }
+      .lobby__section-title { color: var(--fg); margin: 0 0 .75rem; font-size: 1.2rem; }
+      .lobby__players-list {
+        list-style: none; margin: 0; padding: 0;
+        display: flex; flex-wrap: wrap; gap: .5rem;
+      }
+      .lobby__player {
+        background: var(--bg-card); border: 1px solid var(--border);
+        padding: .5rem .85rem; border-radius: 999px;
+        font-size: .95rem;
+      }
+      .lobby__empty { color: var(--fg-muted); font-style: italic; margin: .5rem 0 0; }
+      .lobby__error {
+        margin-top: 1rem; padding: .75rem 1rem;
+        background: rgba(220, 35, 99, .1); color: var(--danger);
+        border-radius: 6px;
+      }
+      .lobby__start {
+        width: 100%; background: var(--accent); color: var(--bg);
+        border: 0; padding: .9rem; font-size: 1rem; font-weight: bold;
+        border-radius: 4px; margin-top: 1.5rem;
+      }
+      .lobby__start:hover:not(:disabled) { background: #ffd98a; }
+      .lobby__start:disabled { opacity: .5; cursor: not-allowed; }
+
       /* Phaser game container + loading */
       #game { width: 100%; height: 100vh; }
       .loading {
