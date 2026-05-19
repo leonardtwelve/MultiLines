@@ -67,10 +67,14 @@ function showLobby(adventure: Adventure): void {
     root: root!,
     client,
     adventureId: adventure.manifest.id,
-    // Le QR pointe le front (/play.html), pas le serveur. On utilise
-    // l'origine courante — fonctionne aussi bien en dev (localhost:5173)
-    // qu'en prod (multi-lines.vercel.app).
-    joinBaseUrl: new URL('play.html', window.location.origin).toString(),
+    // Le QR pointe le front (le Player), pas le serveur. On utilise l'origine
+    // courante — fonctionne aussi bien en dev (localhost:5173) qu'en prod
+    // (multi-lines.vercel.app). Le chemin `player/index.html` est explicite
+    // et marche partout :
+    //   - Vite dev : sert directement `src/player/index.html`
+    //   - Vercel prod : sert `dist/player/index.html` (vérifié : 200 OK)
+    // (`/player` tout court marche aussi en prod, mais 404 en dev Vite.)
+    joinBaseUrl: new URL('player/index.html', window.location.origin).toString(),
     onCancel: () => showHome(),
     onStartGame: ({ roomId, players }) => {
       // TODO Prompt 3b/c : démarrer effectivement l'aventure côté serveur,

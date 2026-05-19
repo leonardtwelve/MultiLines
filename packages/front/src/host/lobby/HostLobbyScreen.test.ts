@@ -28,7 +28,7 @@ describe('HostLobbyScreen', () => {
       root,
       client: stub as unknown as SocketClient,
       adventureId: 'banque-lune',
-      joinBaseUrl: 'http://localhost:5173/play.html',
+      joinBaseUrl: 'http://localhost:5173/player/index.html',
       onCancel: () => {},
     });
     await screen.render();
@@ -45,7 +45,7 @@ describe('HostLobbyScreen', () => {
       root,
       client: stub as unknown as SocketClient,
       adventureId: 'banque-lune',
-      joinBaseUrl: 'http://localhost:5173/play.html',
+      joinBaseUrl: 'http://localhost:5173/player/index.html',
       onCancel: () => {},
     });
     await screen.render();
@@ -65,7 +65,7 @@ describe('HostLobbyScreen', () => {
       root,
       client: stub as unknown as SocketClient,
       adventureId: 'banque-lune',
-      joinBaseUrl: 'http://localhost:5173/play.html',
+      joinBaseUrl: 'http://localhost:5173/player/index.html',
       onCancel: () => {},
     });
     await screen.render();
@@ -89,7 +89,7 @@ describe('HostLobbyScreen', () => {
       root,
       client: stub as unknown as SocketClient,
       adventureId: 'banque-lune',
-      joinBaseUrl: 'http://localhost:5173/play.html',
+      joinBaseUrl: 'http://localhost:5173/player/index.html',
       onCancel: () => {},
     });
     await screen.render();
@@ -117,7 +117,7 @@ describe('HostLobbyScreen', () => {
       root,
       client: stub as unknown as SocketClient,
       adventureId: 'banque-lune',
-      joinBaseUrl: 'http://localhost:5173/play.html',
+      joinBaseUrl: 'http://localhost:5173/player/index.html',
       onCancel: () => {},
     });
     await screen.render();
@@ -133,7 +133,7 @@ describe('HostLobbyScreen', () => {
       root,
       client: stub as unknown as SocketClient,
       adventureId: 'banque-lune',
-      joinBaseUrl: 'http://localhost:5173/play.html',
+      joinBaseUrl: 'http://localhost:5173/player/index.html',
       onCancel: () => {
         cancelled = true;
       },
