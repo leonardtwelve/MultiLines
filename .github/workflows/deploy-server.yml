@@ -1,0 +1,83 @@
+name: Deploy server (Fly.io)
+
+# Déclenché sur push de develop (preview) et main (prod) **après** que la CI
+# `validate` soit passée (cf. ci.yml). Le job vérifie une dernière fois que les
+# tests + build serveur passent avant de pousser sur Fly.io.
+#
+# Prérequis manuels (cf. packages/server/fly.toml) :
+#   1. App `pixel-quests-server` créée sur Fly.io
+#   2. Secret GitHub Actions `FLY_API_TOKEN` configuré
+#      (Settings → Secrets and variables → Actions)
+#   3. Secrets Fly.io `CORS_ORIGINS` et `PUBLIC_URL` configurés via
+#      `flyctl secrets set ...`
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'packages/server/**'
+      - 'packages/shared/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/deploy-server.yml'
+
+concurrency:
+  # Une seule pipeline de deploy par branche à la fois — évite les push qui se
+  # chevauchent. On n'annule pas en cours pour ne pas laisser Fly à mi-chemin.
+  group: deploy-server-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    # Garde-fou : seul develop et main déclenchent un deploy effectif.
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies (workspace)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build — shared
+        run: pnpm --filter @pixel-quests/shared build
+
+      - name: Test — server (re-run avant deploy)
+        run: pnpm --filter @pixel-quests/server test
+
+      - name: Build — server (re-run avant deploy)
+        run: pnpm --filter @pixel-quests/server build
+
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        run: |
+          flyctl deploy \
+            --config packages/server/fly.toml \
+            --dockerfile packages/server/Dockerfile \
+            --remote-only \
+            --wait-timeout 300
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Smoke test (healthcheck)
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl -fsS https://pixel-quests-server.fly.dev/health; then
+              echo "✓ healthcheck OK (tentative $i)"
+              exit 0
+            fi
+            echo "… healthcheck pas encore prêt (tentative $i), retry dans 5s"
+            sleep 5
+          done
+          echo "✗ healthcheck KO après 5 tentatives"
+          exit 1
