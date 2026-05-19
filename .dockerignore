@@ -1,0 +1,51 @@
+# Racine du repo = contexte de build pour packages/server/Dockerfile.
+#
+# IMPORTANT : Docker lit le .dockerignore à la racine du build context, **pas**
+# à côté du Dockerfile. C'est pour ça que ce fichier est ici (et pas seulement
+# dans packages/server/). Sans lui, flyctl tente d'envoyer tout le repo —
+# y compris les node_modules pnpm pleins de symlinks, ce qui casse l'archive
+# tar côté builder distant (« archive/tar: unknown file mode »).
+
+# ── Artifacts de build & deps ────────────────────────────────────────────────
+**/node_modules
+**/dist
+**/.turbo
+**/.cache
+**/coverage
+**/.vite
+
+# ── Front (pas nécessaire au build serveur) ──────────────────────────────────
+packages/front/src
+packages/front/public
+packages/front/index.html
+packages/front/vite.config.ts
+packages/front/vitest.config.ts
+packages/front/tsconfig*.json
+packages/front/eslint.config.*
+
+# ── Tests / dev ──────────────────────────────────────────────────────────────
+**/*.test.ts
+**/*.test.tsx
+**/vitest.config.ts
+**/.eslintrc.cjs
+
+# ── Git, IDE, OS ─────────────────────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+*.log
+
+# ── Env secrets (ne JAMAIS envoyer au builder) ───────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Docs & README (pas utiles au runtime) ────────────────────────────────────
+docs
+**/README.md
+**/CHANGELOG.md

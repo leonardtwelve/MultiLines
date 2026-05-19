@@ -1,0 +1,38 @@
+# NOTE : Docker lit le .dockerignore à la racine du build context, donc
+# le fichier qui compte est `/.dockerignore` à la racine du repo. Celui-ci
+# est conservé pour la documentation locale (« qu'est-ce que le serveur
+# n'a pas besoin d'envoyer au builder ? ») et au cas où on bâtirait un jour
+# avec un build context = packages/server/.
+
+# Artifacts
+**/dist
+**/node_modules
+**/.turbo
+**/.cache
+**/coverage
+
+# Sources non nécessaires au build serveur
+packages/front/src
+packages/front/public
+packages/front/index.html
+packages/front/vite.config.ts
+packages/front/vitest.config.ts
+packages/front/tsconfig*.json
+
+# Tests / dev
+**/*.test.ts
+**/*.test.tsx
+**/vitest.config.ts
+**/.eslintrc.cjs
+
+# Misc
+.git
+.github
+.vscode
+.idea
+*.log
+.env
+.env.*
+!.env.example
+README.md
+docs
