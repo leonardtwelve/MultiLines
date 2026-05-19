@@ -2,7 +2,8 @@
  * Entrée Player smartphone (Prompt 3a).
  *
  * Bundle séparé de host/main.ts via Vite multi-page (cf. vite.config.ts).
- * URL : `/play.html` (en prod : https://multi-lines.vercel.app/play.html).
+ * URL : `/player/index.html` (en prod : https://multi-lines.vercel.app/player/index.html ;
+ * Vercel le sert aussi sur `/player` sans extension).
  *
  * Pas de Phaser ici — le Player smartphone reste léger.
  */

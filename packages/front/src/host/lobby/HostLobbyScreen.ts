@@ -4,7 +4,7 @@
  * Cycle de vie :
  *   1. Connexion au serveur (via SocketClient).
  *   2. Émission de `room.create` → réception `room.created`.
- *   3. Affichage du code de room + QR code pointant vers /play.html?code=...
+ *   3. Affichage du code de room + QR code pointant vers /player/index.html?code=...
  *   4. Liste de joueurs connectés, mise à jour live sur `player.joined` /
  *      `player.left`.
  *   5. Bouton "Lancer la partie" (désactivé tant qu'il n'y a pas le minimum
@@ -23,7 +23,7 @@ export interface HostLobbyScreenProps {
   client: SocketClient;
   adventureId: string;
   /**
-   * URL de base que le QR pointe (ex: `https://multi-lines.vercel.app/play.html`).
+   * URL de base que le QR pointe (ex: `https://multi-lines.vercel.app/player/index.html`).
    * Le code de room est ajouté en query (`?code=...`).
    */
   joinBaseUrl: string;
@@ -175,7 +175,7 @@ export class HostLobbyScreen {
   private applyRoomCreated(room: PayloadOf<ServerEvent, 'room.created'>): void {
     this.roomId = room.roomId;
     this.roomCode = room.roomCode;
-    // QR cible le front (/play.html?code=…), pas le serveur — c'est le client
+    // QR cible le front (/player/index.html?code=…), pas le serveur — c'est le client
     // qui sait où vit l'UI de join. On ignore `room.qrUrl` du serveur.
     const join = new URL(this.props.joinBaseUrl);
     join.searchParams.set('code', room.roomCode);
