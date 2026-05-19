@@ -1,8 +1,8 @@
-# Build context = racine du repo (cf. Dockerfile en haut de packages/server/).
-# Ce fichier est conventionnellement lu depuis le CWD du `docker build`, mais
-# `flyctl deploy` lit aussi packages/server/.dockerignore quand le Dockerfile
-# vit là. On le maintient à jour des deux côtés (cf. .dockerignore racine si
-# ajouté plus tard).
+# NOTE : Docker lit le .dockerignore à la racine du build context, donc
+# le fichier qui compte est `/.dockerignore` à la racine du repo. Celui-ci
+# est conservé pour la documentation locale (« qu'est-ce que le serveur
+# n'a pas besoin d'envoyer au builder ? ») et au cas où on bâtirait un jour
+# avec un build context = packages/server/.
 
 # Artifacts
 **/dist
