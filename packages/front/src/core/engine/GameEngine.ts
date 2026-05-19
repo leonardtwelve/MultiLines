@@ -27,9 +27,14 @@ export interface GameEngineConfig {
  * sauvegarde, audio, événements) et démarre Phaser une fois les scènes
  * enregistrées par l'aventure courante.
  *
+ * Cycle :
+ *   const engine = new GameEngine(...);
+ *   adventure.init(engine);              // enregistre les scènes
+ *   engine.start();                       // boot Phaser (aucune scène active)
+ *   engine.startScene(key, data);         // démarre la première scène
+ *
  * ⚠️ Statut post-migration monorepo : services `turns`, `privateView`, `store`
- * retirés (archivés / refondus côté serveur). Le moteur est temporairement
- * réduit aux services restants. Refonte intégrale dans Prompt 3.
+ * retirés (archivés / refondus côté serveur). Refonte intégrale dans Prompt 3.
  */
 export class GameEngine {
   readonly events = new EventBus();
@@ -45,6 +50,11 @@ export class GameEngine {
     this.config = config;
   }
 
+  /**
+   * Crée le `Phaser.Game` et y ajoute toutes les scènes enregistrées en
+   * mode **passif** (aucune n'est démarrée automatiquement). Appeler
+   * `startScene(key, data)` ensuite.
+   */
   start(): void {
     if (this.game) return;
     this.game = new Phaser.Game({
@@ -57,8 +67,20 @@ export class GameEngine {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
       },
-      scene: this.scenes.list(),
+      scene: [], // ajout manuel ci-dessous pour pouvoir passer des data
     });
+    for (const { key, scene } of this.scenes.list()) {
+      // 3e arg = autoStart : false → on contrôle le démarrage.
+      this.game.scene.add(key, scene, false);
+    }
+  }
+
+  /** Démarre une scène par clé en lui passant les `data` de son `init()`. */
+  startScene(key: string, data?: object): void {
+    if (!this.game) {
+      throw new Error('GameEngine: appelle start() avant startScene().');
+    }
+    this.game.scene.start(key, data);
   }
 
   stop(): void {
