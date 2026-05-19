@@ -1,0 +1,70 @@
+# fly.toml — déploiement du serveur Pixel Quests sur Fly.io (F18, F21).
+#
+# Provisionnement initial (une seule fois, en local, par un humain) :
+#   flyctl auth login
+#   flyctl apps create pixel-quests-server --org personal
+#   flyctl secrets set CORS_ORIGINS="https://multi-lines.vercel.app" \
+#                     PUBLIC_URL="https://pixel-quests-server.fly.dev"
+#   flyctl deploy --config packages/server/fly.toml \
+#                 --dockerfile packages/server/Dockerfile
+#
+# Ensuite la CI (.github/workflows/deploy-server.yml) prend le relais sur
+# chaque push de `develop` et `main`.
+
+app = "pixel-quests-server"
+primary_region = "cdg"        # Paris — latence basse pour playtests FR.
+
+[build]
+  # On laisse le Dockerfile gérer le build. Pas de builder Fly auto.
+
+[env]
+  # PORT est aussi forcé à 8080 dans le Dockerfile, mais on le redonne ici
+  # pour que `flyctl ssh console` voie la même valeur.
+  PORT = "8080"
+  NODE_ENV = "production"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Service HTTP / WebSocket
+#
+# Un seul service expose 80 (HTTP) et 443 (HTTPS) vers le port interne 8080.
+# socket.io fonctionne en HTTP upgrade — pas de section [[services.ws]] dédiée
+# requise, l'upgrade WebSocket passe par le service HTTP standard.
+# ──────────────────────────────────────────────────────────────────────────────
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # IMPORTANT : on garde au moins 1 machine en marche.
+  # L'état des rooms vit en RAM (F17) — auto-stop = perte de partie.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  # Concurrence : on raisonne en connexions actives (WS persistantes), pas en
+  # requêtes/s. 5 joueurs × ~50 parties simultanées = ~250 connexions.
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 500
+    soft_limit = 400
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Healthcheck — pointe l'endpoint /health (cf. packages/server/src/index.ts).
+# ──────────────────────────────────────────────────────────────────────────────
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/health"
+  protocol = "http"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# VM — taille minimale, suffisante pour un MVP single-instance.
+# Upgrade à 512 MB / shared-cpu-2x si on commence à voir des soucis pendant
+# les playtests.
+# ──────────────────────────────────────────────────────────────────────────────
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
