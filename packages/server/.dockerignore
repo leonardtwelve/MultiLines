@@ -1,0 +1,38 @@
+# Build context = racine du repo (cf. Dockerfile en haut de packages/server/).
+# Ce fichier est conventionnellement lu depuis le CWD du `docker build`, mais
+# `flyctl deploy` lit aussi packages/server/.dockerignore quand le Dockerfile
+# vit là. On le maintient à jour des deux côtés (cf. .dockerignore racine si
+# ajouté plus tard).
+
+# Artifacts
+**/dist
+**/node_modules
+**/.turbo
+**/.cache
+**/coverage
+
+# Sources non nécessaires au build serveur
+packages/front/src
+packages/front/public
+packages/front/index.html
+packages/front/vite.config.ts
+packages/front/vitest.config.ts
+packages/front/tsconfig*.json
+
+# Tests / dev
+**/*.test.ts
+**/*.test.tsx
+**/vitest.config.ts
+**/.eslintrc.cjs
+
+# Misc
+.git
+.github
+.vscode
+.idea
+*.log
+.env
+.env.*
+!.env.example
+README.md
+docs
