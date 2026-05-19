@@ -6,7 +6,8 @@
 
 import Phaser from 'phaser';
 
-const SCENE_KEY = 'banque-lune:result';
+export const RESULT_SCENE_KEY = 'banque-lune:result';
+const SCENE_KEY = RESULT_SCENE_KEY;
 
 /**
  * Bilan de fin de partie (placeholder M1 / migration monorepo).
