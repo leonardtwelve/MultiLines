@@ -168,6 +168,19 @@ Conditions de sortie de `casse` :
 | Tous les objectifs publics complétés | `resolution` | `extraction` (succès anticipé) |
 | Aucun joueur restant (déco massive) | `turn-end` | `cancelled` |
 
+#### Précédence quand plusieurs conditions sont vraies simultanément
+
+L'ordre d'évaluation est **fixe et documenté** pour éviter tout comportement non déterministe. À chaque sous-état où une condition peut être évaluée, on parcourt **dans cet ordre** et on s'arrête à la première qui matche :
+
+1. **`cancelled` par déco massive** (≤ 0 joueurs connectés) — toujours en premier, neutralise tout le reste.
+2. **`extraction` par échec** (`alerte ≥ threshold`) — l'échec catastrophique l'emporte sur la victoire (sinon on aurait un finish "succès in extremis" qui contredirait le narratif Banque Lune).
+3. **`extraction` par succès anticipé** (`objectifs publics complétés`) — récompense l'efficacité avant épuisement des tours.
+4. **`extraction` par limite de tours** (`turnNumber > maxTurns`) — finish par timeout (le plus tardif).
+
+Le payload de `game.ended` indique systématiquement `endReason: 'host-timeout' | 'massive-disconnect' | 'failure-alert' | 'success-early' | 'turn-limit'` pour que la UI bilan puisse adapter son rendu.
+
+> **Conséquence sur l'impl** : un même tour peut produire à la fois `alerte ≥ threshold` (en sous-état `alerte`) et `objectifs complétés` (en sous-état `resolution`) — l'échec gagne. Tests à écrire pour ce cas.
+
 ### 3.4. Depuis `extraction`
 
 Courte transition (~3-5 s côté UI). Aucune action joueur acceptée. Auto-transition vers `vote` (acte 3).
@@ -421,3 +434,4 @@ stateDiagram-v2
 | S5 | `paused` = enveloppe avec previousStatus | Restauration triviale sans dupliquer la logique |
 | S6 | Auto-`pass` après 60 s d'inactivité du joueur actif | Évite parties bloquées si quelqu'un raccroche |
 | S7 | Hooks aventure (resolveAction, triggerTurnEvents…) | Découple state-machine générique vs règles spécifiques |
+| S8 | Précédence fixe des conditions de sortie `casse` | Évite le non-déterminisme quand échec+succès+timeout coïncident (échec > succès > timeout) |
