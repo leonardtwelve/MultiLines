@@ -32,22 +32,39 @@ Tous typés en union discriminée sur `type`. Helper `PayloadOf<M, T>` pour extr
 - Les **events privés Player** (rôle, objectif, dossiers) → emit dirigé sur le socket du joueur concerné (cf. §5).
 
 ### 1.4. Versioning
-- Champ optionnel `serverVersion: string` (semver) émis par le serveur dans `connection.established`.
+- Le serveur émet `serverVersion: string` (semver) **dans le payload de `connection.established`** (cf. §2.1, ajout).
 - Le client compare au sien (`import.meta.env.VITE_APP_VERSION` injecté au build).
-- Si majeur ≠ → le client affiche un bandeau « rafraîchir la page » et bloque les nouvelles actions.
+- Si majeur ≠ → le client affiche un bandeau « rafraîchir la page » et bloque les nouvelles actions (mais reste en lecture seule pour ne pas perdre l'affichage).
 - **Pas de négociation** — on assume rolling deploy avec rétro-compatibilité minime pendant le MVP. Si breaking change protocol, on bumpe majeur + on documente.
+
+### 1.5. CORS et environnements multiples
+Le serveur Fly autorise les origins via `CORS_ORIGINS` (variable d'env). Au MVP :
+- **Liste de regex** plutôt qu'un string exact (cohérent avec socket.io qui accepte `origin: RegExp | (string|RegExp)[]`).
+- Configurés au démarrage : `https://multi-lines.vercel.app`, `https://*.vercel.app` (couvre tous les previews), `http://localhost:5173`, `http://127.0.0.1:5173`.
+- Implémentation : le serveur lit `CORS_ORIGINS` (CSV) et convertit chaque entrée commençant par `*.` en une regex. Au démarrage, log la liste résolue.
+
+> Sans ça : les previews Vercel (URLs aléatoires `multi-lines-git-feat-xxx.vercel.app`) sont silencieusement bloqués par le navigateur (CORS), produisant des timeouts socket.io côté client sans message d'erreur lisible. Bug rencontré en réel pendant Prompt 3a.
+
+### 1.6. Sécurité acceptée au MVP — sessionToken non signé
+Le `sessionToken` (cf. §6.4) est un nanoid stocké en RAM côté serveur, transmis via cookie HTTP-only. **Il n'est pas signé cryptographiquement.**
+
+- **Risque accepté pour le MVP** (playtest entre amis, pas d'ouverture publique) : un attaquant qui aurait accès au cookie d'un joueur (XSS via une faille du front, ou accès physique au navigateur) peut usurper son identité dans la partie en cours.
+- **Mitigations existantes** : cookie HTTP-only (pas accessible JS), nanoid 21 caractères (entropie suffisante contre brute-force réseau), expiration à `game.ended`.
+- **À durcir avant ouverture publique** (post-MVP) : signature HMAC du token avec un secret serveur, rotation périodique, audit log des reconnexions par token.
 
 ---
 
 ## 2. Catalogue des messages (extension Prompt 3c)
 
-### 2.1. Existant (Prompt 2a, conservé)
+### 2.1. Existant (Prompt 2a, conservé sauf mention)
 
 Voir `packages/shared/src/protocol/messages.ts` :
 
 - `HostRequest` : `room.create` · `game.start` · `ping`
 - `PlayerRequest` : `room.join` · `room.leave` · `ping`
 - `ServerEvent` : `room.created` · `player.joined` · `player.left` · `room.full` · `room.not-found` · `pong` · `connection.established`
+
+**Évolution Prompt 3c (rétrocompatible)** : `connection.established` ajoute le champ `serverVersion: string` (cf. §1.4). Payload final : `{ socketId, serverVersion }`. Les clients existants qui ignorent ce champ continuent à fonctionner.
 
 ### 2.2. Nouveau — gameplay (à ajouter)
 
@@ -65,12 +82,14 @@ Voir `packages/shared/src/protocol/messages.ts` :
 
 | Type | Payload | Sémantique |
 |---|---|---|
+| `briefing.ready` | `{}` | Le Player a fini de lire son briefing privé (rôle + objectif). Quand tous les Players l'ont émis → transition `briefing` → `casse` (cf. state-machine §3.2). |
 | `action.propose` | `{ actionId, params }` | Propose une action de rôle (ex: `infiltrate`, `negotiate`). Le serveur valide l'autorisation + résout. |
 | `action.cancel` | `{ proposalId }` | Annule une proposition pas encore validée (utile si confirmation requise). |
 | `pacte.propose` | `{ targetPlayerId, terms }` | Propose un Pacte secret à un autre joueur. |
 | `pacte.respond` | `{ pacteId, accept }` | Réponse à un Pacte reçu. |
 | `vote.cast` | `{ ballotId, choice }` | Vote secret (acte 3). |
 | `move.tile` | `{ x, y }` | Demande un déplacement vers une tile (F12, validation portée côté serveur). |
+| `state.resync.request` | `{}` | Le client a détecté un gap de version (cf. store-projection §4.1) et demande un nouveau snapshot. Sans payload — l'identité vient du socket. |
 
 > Toutes les actions Player sont **propositions** soumises au serveur. Le client n'arbitre rien (F17). Le serveur valide → applique → diffuse.
 
@@ -80,6 +99,7 @@ Voir `packages/shared/src/protocol/messages.ts` :
 
 | Type | Payload | Sémantique |
 |---|---|---|
+| `briefing.ready-changed` | `{ readyPlayerIds: PlayerId[] }` | Émis à chaque `briefing.ready` reçu — permet à la UI Host d'afficher « 2/4 joueurs prêts ». |
 | `game.started` | `{ initialState, roleDistribution }` | Démarrage effectif de la partie après `game.start` du Host. **N'expose pas les rôles privés** — voir §5. |
 | `game.paused` | `{ at }` | La partie est en pause. |
 | `game.resumed` | `{ at }` | La partie reprend. |
@@ -93,12 +113,13 @@ Voir `packages/shared/src/protocol/messages.ts` :
 | `door.unlocked` | `{ doorId, by }` | Cadenas levé (F15). |
 | `alert.changed` | `{ level }` | Jauge d'alerte mise à jour (Banque Lune spec #24). |
 
-##### Dirigés (privés à un Player)
+##### Dirigés (privés à un Player ou au Host)
 
 Émis avec `io.to(socketId).emit(...)` ; jamais broadcast.
 
 | Type | Payload | Sémantique |
 |---|---|---|
+| `state.snapshot` | `{ state, version, audience: 'host' \| 'player' }` | Snapshot complet du store envoyé à un socket précis — à la (re)connexion (initial sync), ou en réponse à `state.resync.request`. Le payload est filtré selon le destinataire (Host n'a pas le `private.*` ; Player n'a que son `private.*` à lui). Cf. store-projection §2 et §5. |
 | `private.role-revealed` | `{ roleId, capabilities }` | Distribution du rôle au début de partie (G5). |
 | `private.objective` | `{ objectiveId, description, hidden }` | Objectif privé du joueur. |
 | `private.dossiers` | `{ items }` | Dossiers en main (info privée banque-lune). |
@@ -321,3 +342,5 @@ Implémentation : `RateLimiter` simple par `(socketId, type)` (token bucket en R
 | P4 | Codes d'erreur enum stables | Localisation FR au serveur (`message` prêt à afficher) |
 | P5 | Reconnexion par cookie session-token | Simple, marche sans login |
 | P6 | RAM single-instance pour le MVP | Pas de Redis avant le besoin |
+| P7 | CORS regex (`*.vercel.app` + localhost) | Évite le blocage silencieux des previews Vercel (bug rencontré Prompt 3a) |
+| P8 | sessionToken nanoid non signé, risque assumé | Acceptable pour playtest entre amis ; durci avant ouverture publique |

@@ -110,6 +110,19 @@ Client                                Serveur
   ...
 ```
 
+#### Race condition initiale — patches arrivant avant le snapshot
+
+socket.io ne garantit **pas** que `state.snapshot` arrive avant un éventuel `state.patch` envoyé par le serveur à la même milliseconde (par exemple si une partie est déjà en cours et qu'un joueur agit pile au moment où on rejoint). Le client doit gérer ce cas explicitement :
+
+**Règle** : tant que `store._state == null` (pas de snapshot reçu), tous les `state.patch` entrants sont mis en **file d'attente** (max 50 entrées, FIFO). Dès réception du snapshot :
+
+1. `hydrate(snapshot)` pose le state initial avec `_version = snapshot.version`.
+2. On vide la file dans l'ordre, en appelant `applyPatchBatch` pour chaque batch.
+3. Si l'un d'eux échoue avec `needsResync: true` → on jette la file restante et on émet `state.resync.request`.
+4. Si la file dépasse 50 entrées avant l'arrivée du snapshot → on jette la file et on émet `state.resync.request`.
+
+> **Sans ça** : les patches reçus prématurément sont silencieusement perdus, le client a un store désynchronisé sans le savoir. Bug très difficile à reproduire ensuite.
+
 ### 2.2. Pendant la partie (patches incrémentaux)
 
 Chaque mutation côté serveur produit :
@@ -154,6 +167,24 @@ type StatePatchBatch = {
 ```
 
 `path` au format pointer JSON : `/players/abc123/credits`, `/turn/activePlayerId`, `/board/doors/0/locked`.
+
+#### Patches sur arrays (RFC 6902 conventions)
+
+Les paths peuvent cibler des éléments d'array :
+- **Index numérique** : `/players/abc/dossiers/2` pointe le 3e dossier.
+- **Token `-`** (append) : `/players/abc/dossiers/-` désigne « après le dernier élément ».
+
+Conventions adoptées :
+
+| Cas | Op | Path | Effet |
+|---|---|---|---|
+| Append à un array | `add` | `/path/to/array/-` | Pousse `value` à la fin |
+| Insérer à index `i` | `add` | `/path/to/array/i` | Insère à `i`, décale le reste |
+| Remplacer index `i` | `replace` | `/path/to/array/i` | Remplace l'élément `i` |
+| Supprimer index `i` | `remove` | `/path/to/array/i` | Retire `i`, décale le reste |
+| Remplacer l'array entier | `replace` | `/path/to/array` | Remplace par `value: [...]` |
+
+> **Préférer l'append (`/-`)** sur `replace` de l'array entier dès qu'on ajoute un élément (Pacte, dossier, event de tour) — payload réseau plus petit ET plus lisible dans les logs.
 
 ### 3.2. Exemples
 
@@ -263,25 +294,47 @@ packages/front/src/store/
 
 ```ts
 class ClientStore {
+  private static readonly MAX_QUEUED_PATCHES = 50;
+
   private _state: ClientStoreState | null = null;
   private _version = 0;
+  private pendingBatches: StatePatchBatch[] = []; // file d'attente pré-snapshot
   private listeners = new Set<(s: ClientStoreState) => void>();
 
   /** Appelé à la réception de `state.snapshot`. */
-  hydrate(snapshot: Snapshot): void {
+  hydrate(snapshot: Snapshot): { needsResync?: boolean } {
     this._state = freeze(snapshot.state);
     this._version = snapshot.version;
     this.emit();
+    // Drain de la file d'attente accumulée pendant qu'on n'avait pas de snapshot.
+    const queued = this.pendingBatches.splice(0);
+    for (const batch of queued) {
+      const r = this.applyPatchBatch(batch);
+      if (r.needsResync) {
+        this.pendingBatches = []; // jette le reste
+        return { needsResync: true };
+      }
+    }
+    return {};
   }
 
   /** Appelé à chaque `state.patch` reçu. */
   applyPatchBatch(batch: StatePatchBatch): { ok: boolean; needsResync?: boolean } {
+    // Cas race condition : snapshot pas encore reçu — on file d'attente.
+    if (this._state === null) {
+      if (this.pendingBatches.length >= ClientStore.MAX_QUEUED_PATCHES) {
+        this.pendingBatches = []; // évite la fuite mémoire
+        return { ok: false, needsResync: true };
+      }
+      this.pendingBatches.push(batch);
+      return { ok: true };
+    }
     if (batch.version !== this._version + 1) {
       // Doublon → ignore. Gap → resync.
       if (batch.version <= this._version) return { ok: true };
       return { ok: false, needsResync: true };
     }
-    this._state = freeze(applyPatches(this._state!, batch.patches));
+    this._state = freeze(applyPatches(this._state, batch.patches));
     this._version = batch.version;
     this.emit();
     return { ok: true };
@@ -455,3 +508,5 @@ function freeze<T>(obj: T): T {
 | J6 | `Object.freeze` récursif côté client | Garde-fou pas-cher, complète le type-level |
 | J7 | Tout state non confirmé est jeté à la reconnexion | Pas de réconciliation complexe — le serveur est juge |
 | J8 | Pas de dépendance lib côté client (mini JSON Patch maison) | Bundle léger, surtout côté Player smartphone |
+| J9 | Support pattern `/-` pour append à un array | Évite de remplacer l'array entier à chaque ajout (Pactes, dossiers, events de tour) |
+| J10 | File d'attente jusqu'à 50 patches avant le snapshot | Évite la perte silencieuse de patches qui arrivent prématurément à la (re)connexion |
