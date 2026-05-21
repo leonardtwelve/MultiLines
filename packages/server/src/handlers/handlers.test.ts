@@ -44,10 +44,13 @@ function connectClient(
     const tryResolve = () => {
       if (connected && socketId !== null) resolve({ sock, socketId });
     };
-    sock.once('connection.established', (payload: { socketId: string }) => {
-      socketId = payload.socketId;
-      tryResolve();
-    });
+    sock.once(
+      'connection.established',
+      (payload: { socketId: string; serverVersion: string }) => {
+        socketId = payload.socketId;
+        tryResolve();
+      },
+    );
     sock.once('connect', () => {
       connected = true;
       tryResolve();
