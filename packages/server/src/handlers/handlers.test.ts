@@ -160,4 +160,154 @@ describe('Server integration — socket.io handlers', () => {
     const payload = await playerLeft;
     expect(payload.playerId).toBeDefined();
   });
+
+  // ===========================================================================
+  // Gameplay handlers (slice 3c-3) — game.start + briefing.ready + private.error
+  // ===========================================================================
+
+  /** Récupère le roomId créé + connecte un Host. */
+  async function setupHostWithRoom(): Promise<{
+    host: ClientSocket;
+    roomId: string;
+    roomCode: string;
+  }> {
+    const { sock: host } = await connectClient(h.port);
+    h.sockets.push(host);
+    const created = once<{ roomId: string; roomCode: string }>(host, 'room.created');
+    host.emit('room.create', { adventureId: 'banque-lune' });
+    const { roomId, roomCode } = await created;
+    return { host, roomId, roomCode };
+  }
+
+  /** Connecte n Players et les fait rejoindre la room ; renvoie leurs sockets + ids. */
+  async function joinPlayers(
+    roomCode: string,
+    hostSock: ClientSocket,
+    names: string[],
+  ): Promise<Array<{ sock: ClientSocket; playerId: string; name: string }>> {
+    const out: Array<{ sock: ClientSocket; playerId: string; name: string }> = [];
+    for (const name of names) {
+      const { sock } = await connectClient(h.port);
+      h.sockets.push(sock);
+      const joined = once<{ playerId: string; playerName: string }>(hostSock, 'player.joined');
+      sock.emit('room.join', { roomCode, playerName: name });
+      const { playerId } = await joined;
+      out.push({ sock, playerId, name });
+    }
+    return out;
+  }
+
+  it('game.start avec < 3 joueurs → private.error ROOM_STATE_INVALID', async () => {
+    const { host, roomId } = await setupHostWithRoom();
+    const err = once<{ code: string; message: string }>(host, 'private.error');
+    host.emit('game.start', { roomId });
+    const payload = await err;
+    expect(payload.code).toBe('ROOM_STATE_INVALID');
+    expect(payload.message).toMatch(/au moins 3/i);
+  });
+
+  it('game.start sur roomId inconnu → private.error ROOM_NOT_FOUND', async () => {
+    const { host } = await setupHostWithRoom();
+    const err = once<{ code: string }>(host, 'private.error');
+    host.emit('game.start', { roomId: 'inexistant' });
+    const payload = await err;
+    expect(payload.code).toBe('ROOM_NOT_FOUND');
+  });
+
+  it('game.start par un Player (pas le Host) → private.error ROOM_STATE_INVALID', async () => {
+    const { host, roomId, roomCode } = await setupHostWithRoom();
+    const [{ sock: player }] = await joinPlayers(roomCode, host, ['Léa']);
+    const err = once<{ code: string }>(player, 'private.error');
+    player.emit('game.start', { roomId });
+    const payload = await err;
+    // Validator validateSenderIsHost renvoie ROOM_STATE_INVALID
+    expect(payload.code).toBe('ROOM_STATE_INVALID');
+  });
+
+  it('game.start valide → game.started broadcast + private.role-revealed/objective par player', async () => {
+    const { host, roomId, roomCode } = await setupHostWithRoom();
+    const players = await joinPlayers(roomCode, host, ['Léa', 'Sami', 'Aïcha']);
+
+    const gameStartedHost = once<{ initialState: { status: string } }>(host, 'game.started');
+    const roleP1 = once<{ roleId: string }>(players[0].sock, 'private.role-revealed');
+    const objP1 = once<{ description: string }>(players[0].sock, 'private.objective');
+    const roleP2 = once<{ roleId: string }>(players[1].sock, 'private.role-revealed');
+    const roleP3 = once<{ roleId: string }>(players[2].sock, 'private.role-revealed');
+
+    host.emit('game.start', { roomId });
+
+    const initial = await gameStartedHost;
+    expect(initial.initialState.status).toBe('briefing');
+    const r1 = await roleP1;
+    const o1 = await objP1;
+    expect(r1.roleId).toBeTruthy();
+    expect(o1.description).toBeTruthy();
+    expect((await roleP2).roleId).toBeTruthy();
+    expect((await roleP3).roleId).toBeTruthy();
+  });
+
+  it("private.role-revealed : chaque Player ne reçoit QUE son propre rôle (sécurité par construction)", async () => {
+    const { host, roomId, roomCode } = await setupHostWithRoom();
+    const players = await joinPlayers(roomCode, host, ['Léa', 'Sami', 'Aïcha']);
+
+    // Compte les private.role-revealed reçus par chaque player.
+    const counts: Record<number, number> = { 0: 0, 1: 0, 2: 0 };
+    for (const [i, p] of players.entries()) {
+      p.sock.on('private.role-revealed', () => {
+        counts[i] += 1;
+      });
+    }
+
+    host.emit('game.start', { roomId });
+    // Laisse le temps aux 3 émissions ciblées d'arriver.
+    await new Promise((r) => setTimeout(r, 250));
+
+    // Chaque player a reçu exactement 1 message — le sien. Si un broadcast
+    // accidentel sortait, on aurait 3 messages par player.
+    expect(counts[0]).toBe(1);
+    expect(counts[1]).toBe(1);
+    expect(counts[2]).toBe(1);
+  });
+
+  it("briefing.ready : transition vers casse quand les 3 joueurs confirment", async () => {
+    const { host, roomId, roomCode } = await setupHostWithRoom();
+    const players = await joinPlayers(roomCode, host, ['Léa', 'Sami', 'Aïcha']);
+    const gameStarted = once(host, 'game.started');
+    host.emit('game.start', { roomId });
+    await gameStarted;
+
+    // Émet et attend chaque broadcast en série, en posant une promesse
+    // AVANT l'émission correspondante (sinon `once` rate l'event).
+    for (const p of players) {
+      const waitReady = once<{ readyPlayerIds: string[] }>(host, 'briefing.ready-changed');
+      p.sock.emit('briefing.ready', {});
+      await waitReady;
+    }
+
+    // Après le 3e ready, la transition vers casse est synchrone côté
+    // serveur. On laisse un tick à socket.io pour drainer la file
+    // d'événements avant de lire le statut.
+    await new Promise((r) => setTimeout(r, 50));
+    const status = h.app.rooms.getRoom(roomId)?.status;
+    expect(status).toBe('casse');
+  });
+
+  it('briefing.ready par un socket non-player → private.error NOT_IN_ROOM', async () => {
+    // Connexion sans rejoindre une room.
+    const { sock: orphan } = await connectClient(h.port);
+    h.sockets.push(orphan);
+    const err = once<{ code: string }>(orphan, 'private.error');
+    orphan.emit('briefing.ready', {});
+    const payload = await err;
+    expect(payload.code).toBe('NOT_IN_ROOM');
+  });
+
+  it('briefing.ready avant game.start → private.error ROOM_STATE_INVALID', async () => {
+    const { host, roomCode } = await setupHostWithRoom();
+    const [{ sock: player }] = await joinPlayers(roomCode, host, ['Léa']);
+    const err = once<{ code: string }>(player, 'private.error');
+    player.emit('briefing.ready', {});
+    const payload = await err;
+    expect(payload.code).toBe('ROOM_STATE_INVALID');
+  });
 });
