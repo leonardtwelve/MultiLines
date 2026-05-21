@@ -47,7 +47,11 @@ describe('Protocol messages — type discrimination', () => {
 
   it('AnyMessage couvre requêtes et événements', () => {
     const req: AnyMessage = { type: 'ping', payload: { t: 0 } };
-    const evt: AnyMessage = { type: 'connection.established', payload: { socketId: 'abc' } };
+    const evt: AnyMessage = {
+      type: 'connection.established',
+      // Note : serverVersion ajouté dans le Prompt 3c-spec (cf. protocole.md §1.4)
+      payload: { socketId: 'abc', serverVersion: '0.0.1' },
+    };
     expect(req.type).toBe('ping');
     expect(evt.type).toBe('connection.established');
   });
