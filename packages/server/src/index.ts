@@ -9,6 +9,14 @@ import {
 } from './handlers/PlayerHandlers';
 
 /**
+ * Version du serveur émise dans `connection.established` (cf.
+ * `docs/specs/protocole.md §1.4`). Hardcodée pour rester sérialisable au
+ * runtime (lire `package.json` en ESM = friction). Mise à jour à la main
+ * en même temps que `package.json#version`.
+ */
+const SERVER_VERSION = '0.0.1';
+
+/**
  * Entry point du serveur Pixel Quests (F11, F17, F20, F21).
  *
  * HTTP minimal (route `/health`) + socket.io pour le protocole temps réel.
@@ -38,7 +46,10 @@ export function createApp(config = loadConfig()): {
   });
 
   io.on('connection', (socket) => {
-    socket.emit('connection.established', { socketId: socket.id });
+    socket.emit('connection.established', {
+      socketId: socket.id,
+      serverVersion: SERVER_VERSION,
+    });
     registerHostHandlers({ io, socket, rooms, config });
     registerPlayerHandlers({ io, socket, rooms });
     registerDisconnectHandler({ io, socket, rooms });
