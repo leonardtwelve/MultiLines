@@ -2,21 +2,41 @@ import { nanoid } from 'nanoid';
 import type { RoomCode, RoomId, SocketId } from '@pixel-quests/shared';
 import { generateUniqueRoomCode } from '../utils/room-code';
 import { Room } from './Room';
+import type { AdventureHooks } from './state-machine/hooks';
+import { createNoOpAdventureHooks } from './state-machine/NoOpAdventureHooks';
+import { RoomStateMachine } from './state-machine/RoomStateMachine';
+
+/**
+ * Fabrique des hooks aventure par `adventureId`. Permet de brancher
+ * Banque Lune (ou toute future aventure) sans coupler le registry à
+ * l'aventure. Défaut : NoOp pour les tests + le MVP de plomberie.
+ */
+export type AdventureHooksFactory = (adventureId: string, roomId: RoomId) => AdventureHooks;
+
+const DEFAULT_HOOKS_FACTORY: AdventureHooksFactory = (adventureId, roomId) =>
+  createNoOpAdventureHooks({ adventureId, roomId });
 
 /**
  * Registre global des rooms actives sur le serveur.
  *
  * Stockage en mémoire (RAM) pour le MVP — single-instance, pas de cluster.
  * Cleanup périodique des rooms expirées (>1h sans activité par défaut).
+ *
+ * Détient également une `RoomStateMachine` par room (cf.
+ * `docs/specs/server-state-machine.md §7.1`). La state machine n'est pas
+ * exposée directement — on passe par `getStateMachine(roomId)`.
  */
 export class RoomRegistry {
   private readonly byId = new Map<RoomId, Room>();
   private readonly byCode = new Map<RoomCode, Room>();
+  private readonly stateMachines = new Map<RoomId, RoomStateMachine>();
+  private readonly hooksFactory: AdventureHooksFactory;
+  private readonly expiryMs: number;
 
-  constructor(
-    /** Durée d'inactivité avant cleanup (ms). 1h par défaut. */
-    private readonly expiryMs: number = 60 * 60 * 1000,
-  ) {}
+  constructor(opts: { hooksFactory?: AdventureHooksFactory; expiryMs?: number } = {}) {
+    this.hooksFactory = opts.hooksFactory ?? DEFAULT_HOOKS_FACTORY;
+    this.expiryMs = opts.expiryMs ?? 60 * 60 * 1000;
+  }
 
   createRoom(adventureId: string, hostSocketId: SocketId): Room {
     const id = nanoid();
@@ -24,6 +44,8 @@ export class RoomRegistry {
     const room = new Room({ id, code, adventureId, hostSocketId });
     this.byId.set(id, room);
     this.byCode.set(code, room);
+    const hooks = this.hooksFactory(adventureId, id);
+    this.stateMachines.set(id, new RoomStateMachine(room, { hooks }));
     return room;
   }
 
@@ -35,11 +57,21 @@ export class RoomRegistry {
     return this.byCode.get(code);
   }
 
+  /**
+   * Récupère la machine à états pilotant cette room. `undefined` si la
+   * room n'existe pas (ou plus). À utiliser depuis les handlers
+   * socket.io pour dispatcher tous les messages gameplay.
+   */
+  getStateMachine(id: RoomId): RoomStateMachine | undefined {
+    return this.stateMachines.get(id);
+  }
+
   deleteRoom(id: RoomId): boolean {
     const room = this.byId.get(id);
     if (!room) return false;
     this.byId.delete(id);
     this.byCode.delete(room.code);
+    this.stateMachines.delete(id);
     return true;
   }
 
@@ -51,6 +83,7 @@ export class RoomRegistry {
       if (room.isEmpty() || inactiveFor > this.expiryMs) {
         this.byId.delete(id);
         this.byCode.delete(room.code);
+        this.stateMachines.delete(id);
         removed += 1;
       }
     }

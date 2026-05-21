@@ -15,4 +15,6 @@ export type {
   FinalScore,
   RoleDistribution,
 } from './hooks';
+export { createNoOpAdventureHooks } from './NoOpAdventureHooks';
+export type { NoOpAdventureHooksOptions } from './NoOpAdventureHooks';
 export { validateMessage } from './validators';

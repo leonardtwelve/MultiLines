@@ -37,12 +37,26 @@ describe('RoomRegistry', () => {
   });
 
   it('cleanup retire les rooms expirées (inactivité > expiryMs)', () => {
-    const reg = new RoomRegistry(100); // 100 ms
+    const reg = new RoomRegistry({ expiryMs: 100 }); // 100 ms
     const r = reg.createRoom('banque-lune', 'sock-1');
     r.addPlayer({ id: 'p1', name: 'Léa', socketId: 'sock-p1', joinedAt: new Date() });
     // Simule passage du temps
     const future = new Date(Date.now() + 500);
     const removed = reg.cleanup(future);
     expect(removed).toBe(1);
+  });
+
+  it("instancie une RoomStateMachine pour chaque room créée", () => {
+    const reg = new RoomRegistry();
+    const r = reg.createRoom('banque-lune', 'sock-1');
+    expect(reg.getStateMachine(r.id)).toBeDefined();
+    expect(reg.getStateMachine('inconnu')).toBeUndefined();
+  });
+
+  it("supprime la state machine quand on deleteRoom", () => {
+    const reg = new RoomRegistry();
+    const r = reg.createRoom('banque-lune', 'sock-1');
+    reg.deleteRoom(r.id);
+    expect(reg.getStateMachine(r.id)).toBeUndefined();
   });
 });
