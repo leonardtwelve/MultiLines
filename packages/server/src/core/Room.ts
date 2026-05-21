@@ -1,4 +1,4 @@
-import type { PlayerId, RoomCode, RoomId, SocketId } from '@pixel-quests/shared';
+import type { PlayerId, RoomCode, RoomId, RoomStatus, SocketId } from '@pixel-quests/shared';
 
 export interface Player {
   id: PlayerId;
@@ -8,13 +8,16 @@ export interface Player {
 }
 
 export const MAX_PLAYERS_PER_ROOM = 5;
+export const MIN_PLAYERS_TO_START = 3;
 
 /**
- * État d'une room (lobby de partie) côté serveur.
+ * État d'une room (lobby + partie en cours) côté serveur.
  *
- * Source de vérité pour la liste des joueurs et l'aventure choisie.
- * Pas de logique de jeu ici — c'est le rôle du `GameStateMachine` à venir
- * (#61 spec/server-state-machine).
+ * Source de vérité pour la liste des joueurs, l'aventure choisie et le
+ * statut courant de la partie (cf. `docs/specs/server-state-machine.md`).
+ *
+ * `Room` reste un **conteneur de données** — la logique de transitions
+ * (validations, side effects à diffuser) vit dans `RoomStateMachine`.
  */
 export class Room {
   readonly id: RoomId;
@@ -25,6 +28,20 @@ export class Room {
 
   private readonly players: Map<PlayerId, Player> = new Map();
   private lastActivityAt: Date;
+  /**
+   * Statut courant. Démarre en `lobby` ; mute via `setStatus` appelée par
+   * `RoomStateMachine` après validation des transitions.
+   */
+  private _status: RoomStatus = 'lobby';
+  /**
+   * Statut précédent le passage en `paused` — permet de restaurer
+   * l'état d'origine au `game.resume` (cf. spec §3.8 paused enveloppe).
+   */
+  private _statusBeforePause: RoomStatus | null = null;
+  /**
+   * Joueurs ayant émis `briefing.ready`. Vidé à chaque retour en `lobby`.
+   */
+  private readonly _briefingReady: Set<PlayerId> = new Set();
 
   constructor(params: {
     id: RoomId;
@@ -39,6 +56,67 @@ export class Room {
     this.hostSocketId = params.hostSocketId;
     this.createdAt = params.createdAt ?? new Date();
     this.lastActivityAt = this.createdAt;
+  }
+
+  // === Statut ===
+
+  get status(): RoomStatus {
+    return this._status;
+  }
+
+  /**
+   * Transition de statut. Pas de garde-fou ici — c'est la state machine
+   * qui valide la légitimité avant d'appeler.
+   *
+   * Side effects automatiques :
+   * - vers `paused` : stocke l'ancien statut dans `_statusBeforePause`.
+   * - vers tout autre statut : reset `briefingReady` (sauf si on entre
+   *   en `briefing` lui-même — on garde la liste vide initiale).
+   */
+  setStatus(next: RoomStatus): void {
+    if (next === this._status) return;
+    if (next === 'paused') {
+      this._statusBeforePause = this._status;
+    }
+    if (next !== 'briefing') {
+      this._briefingReady.clear();
+    }
+    this._status = next;
+    this.touch();
+  }
+
+  /** Statut pré-pause (utile pour `game.resume`). */
+  get statusBeforePause(): RoomStatus | null {
+    return this._statusBeforePause;
+  }
+
+  /** Consomme le pré-pause après restauration. */
+  clearStatusBeforePause(): void {
+    this._statusBeforePause = null;
+  }
+
+  // === Briefing ready set ===
+
+  markBriefingReady(playerId: PlayerId): void {
+    this._briefingReady.add(playerId);
+    this.touch();
+  }
+
+  isBriefingReady(playerId: PlayerId): boolean {
+    return this._briefingReady.has(playerId);
+  }
+
+  briefingReadyCount(): number {
+    return this._briefingReady.size;
+  }
+
+  briefingReadyIds(): ReadonlyArray<PlayerId> {
+    return [...this._briefingReady];
+  }
+
+  /** Tous les joueurs présents ont-ils confirmé leur briefing ? */
+  allBriefingReady(): boolean {
+    return this._briefingReady.size === this.players.size && this.players.size > 0;
   }
 
   addPlayer(player: Player): void {
