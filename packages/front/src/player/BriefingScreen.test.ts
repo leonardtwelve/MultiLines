@@ -35,13 +35,30 @@ function makePlayerSnapshot(overrides: Partial<Snapshot> = {}): Snapshot {
 describe('BriefingScreen', () => {
   let root: HTMLElement;
   let store: ClientStore;
-  let mockClient: { markBriefingReady: ReturnType<typeof vi.fn> };
+  // Stub minimal de SocketClient — markBriefingReady (jamais throw par
+  // défaut) + on() qui mémorise les listeners pour permettre aux tests
+  // de fire `private.error` à la demande.
+  let mockClient: {
+    markBriefingReady: ReturnType<typeof vi.fn>;
+    on: ReturnType<typeof vi.fn>;
+    _fireError: (msg: string) => void;
+  };
 
   beforeEach(() => {
     document.body.innerHTML = '<div id="app"></div>';
     root = document.getElementById('app')!;
     store = new ClientStore();
-    mockClient = { markBriefingReady: vi.fn() };
+    let errorListener: ((p: { code: string; message: string }) => void) | null = null;
+    mockClient = {
+      markBriefingReady: vi.fn(),
+      on: vi.fn((type: string, handler: (p: { code: string; message: string }) => void) => {
+        if (type === 'private.error') errorListener = handler;
+        return () => {
+          if (type === 'private.error') errorListener = null;
+        };
+      }),
+      _fireError: (msg: string) => errorListener?.({ code: 'ROOM_STATE_INVALID', message: msg }),
+    };
   });
 
   afterEach(() => {
@@ -153,6 +170,37 @@ describe('BriefingScreen', () => {
     store.hydrate(makePlayerSnapshot());
     expect(root.querySelector('[data-testid="role"]')).toBeNull();
     expect(root.querySelector('[data-testid="waiting"]')).toBeTruthy();
+  });
+
+  it("affiche les erreurs serveur reçues via private.error (review 3d #1)", () => {
+    const screen = new BriefingScreen({
+      root,
+      client: mockClient as unknown as SocketClient,
+      store,
+    });
+    screen.render();
+    store.hydrate(makePlayerSnapshot());
+    // Simule un refus serveur (ex: briefing.ready après transition casse).
+    mockClient._fireError('La phase de briefing n’est pas en cours.');
+    const errorEl = root.querySelector<HTMLElement>('[data-testid="error"]');
+    expect(errorEl?.hidden).toBe(false);
+    expect(errorEl?.textContent).toMatch(/briefing/i);
+  });
+
+  it("destroy retire aussi le listener private.error (pas d'effet sur fire post-destroy)", () => {
+    const screen = new BriefingScreen({
+      root,
+      client: mockClient as unknown as SocketClient,
+      store,
+    });
+    screen.render();
+    screen.destroy();
+    // Le DOM reste en place, mais le listener private.error est retiré.
+    mockClient._fireError('toto');
+    const errorEl = root.querySelector<HTMLElement>('[data-testid="error"]');
+    // Le bloc d'erreur reste caché — l'event n'a pas été capté.
+    expect(errorEl?.hidden).toBe(true);
+    expect(errorEl?.textContent ?? '').toBe('');
   });
 
   it("warn si markBriefingReady throw mais ne crashe pas la UI", () => {
