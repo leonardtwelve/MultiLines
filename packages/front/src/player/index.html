@@ -123,6 +123,88 @@
       }
       .join__done-name { margin: 0 0 .5rem; font-size: 1rem; }
       .join__done-hint { margin: 0; color: var(--fg-muted); font-size: .85rem; }
+
+      /* === BriefingScreen (slice 3d) === */
+      .briefing__header { margin-bottom: 1.25rem; }
+      .briefing__title { font-size: 1.5rem; margin: 0 0 .25rem; color: var(--accent); }
+      .briefing__hint { margin: 0; color: var(--fg-muted); font-size: .9rem; }
+      .briefing__body {
+        display: flex; flex-direction: column; gap: 1.25rem;
+        margin-bottom: 1.5rem;
+      }
+      .briefing__waiting {
+        padding: 1.5rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        text-align: center;
+        color: var(--fg-muted);
+        font-style: italic;
+      }
+      .briefing__role,
+      .briefing__objective,
+      .briefing__capabilities,
+      .briefing__dossiers {
+        padding: 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .briefing__label {
+        font-size: .75rem;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: var(--fg-muted);
+        margin-bottom: .5rem;
+      }
+      .briefing__value { font-size: 1.1rem; line-height: 1.4; }
+      .briefing__hidden-hint {
+        margin: .75rem 0 0;
+        padding: .5rem .75rem;
+        background: rgba(255, 204, 102, .12);
+        color: var(--accent);
+        border-radius: 4px;
+        font-size: .85rem;
+      }
+      .briefing__capabilities ul,
+      .briefing__dossiers ul {
+        margin: 0; padding: 0;
+        list-style: none;
+        display: flex; flex-direction: column; gap: .25rem;
+        font-family: 'Courier New', monospace;
+      }
+      .briefing__capabilities li, .briefing__dossiers li {
+        padding: .35rem .5rem;
+        background: var(--bg);
+        border-radius: 4px;
+        font-size: .9rem;
+      }
+      .briefing__ready {
+        width: 100%;
+        font-family: inherit;
+        font-size: 1.1rem;
+        font-weight: bold;
+        padding: 1rem;
+        background: var(--accent);
+        color: var(--bg);
+        border: 0;
+        border-radius: 8px;
+        cursor: pointer;
+        min-height: 48px;
+      }
+      .briefing__ready:disabled {
+        opacity: .5;
+        cursor: not-allowed;
+      }
+      .briefing__after-ready {
+        text-align: center;
+        padding: 1.25rem;
+        background: var(--bg-card);
+        border: 1px solid var(--ok);
+        border-radius: 8px;
+        color: var(--ok);
+        margin: 0;
+      }
     </style>
   </head>
   <body>
