@@ -108,20 +108,46 @@ function handleLeave(room: Room, sender: Sender): Reaction {
 }
 
 function handleGameStart(room: Room, deps: LobbyReducerDeps): Reaction {
-  const playerIds = room.getPlayers().map((p) => p.id);
+  const roomPlayers = room.getPlayers();
+  const playerIds = roomPlayers.map((p) => p.id);
   // 1) Transition d'état.
   room.setStatus('briefing');
   // 2) Distribution rôles + objectifs via le hook aventure.
   const distribution = deps.hooks.distributeRoles(playerIds, { rng: deps.rng });
 
-  // 3) Construire les emits :
-  //    - broadcast `game.started` avec l'initialState public (sans aucun privé)
-  //    - dirigé `private.role-revealed` + `private.objective` à chaque player
+  // 3) **Overlay** : les hooks ne connaissent que les PlayerIds. La
+  //    `Room` est seule responsable des noms et de l'identité des
+  //    joueurs (ils ont été fournis lors du `room.join`). On écrase donc
+  //    le `publicState.players` retourné par le hook avec les vraies
+  //    données de la room — le hook reste libre de définir ressources
+  //    initiales (credits, alert, etc.) sans réinventer les pseudos.
+  const overlaidPlayers = { ...distribution.publicState.players };
+  for (const p of roomPlayers) {
+    const fromHook = overlaidPlayers[p.id] ?? {
+      id: p.id,
+      color: '#ffcc66',
+      connected: true,
+    };
+    overlaidPlayers[p.id] = {
+      ...fromHook,
+      id: p.id,
+      name: p.name, // ← vrai pseudo saisi côté Player
+      // `connected: true` est posé par défaut au démarrage ; les
+      // déconnexions ultérieures basculent ce flag via un patch.
+      connected: fromHook.connected ?? true,
+    };
+  }
+  const initialState = {
+    ...distribution.publicState,
+    roomId: room.id, // ← garantie que le roomId vient bien de la Room, pas du hook
+    players: overlaidPlayers,
+  };
+
   const emits: Emit[] = [
     {
       to: 'room',
       type: 'game.started',
-      payload: { initialState: distribution.publicState },
+      payload: { initialState },
     },
   ];
   for (const player of room.getPlayers()) {
