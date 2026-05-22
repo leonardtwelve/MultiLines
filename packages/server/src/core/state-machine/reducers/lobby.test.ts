@@ -196,6 +196,27 @@ describe('lobby reducer — game.start', () => {
     expect((dossiers[0].to as { socketId: string }).socketId).toBe('sock-p1');
   });
 
+  it("le broadcast game.started écrase les noms placeholder du hook avec les vrais pseudos (overlay)", () => {
+    const room = makeRoom();
+    room.addPlayer({ id: 'p1', name: 'Léa', socketId: 'sock-p1', joinedAt: new Date() });
+    room.addPlayer({ id: 'p2', name: 'Sami', socketId: 'sock-p2', joinedAt: new Date() });
+    room.addPlayer({ id: 'p3', name: 'Aïcha', socketId: 'sock-p3', joinedAt: new Date() });
+    const r = applyLobby(
+      room,
+      { type: 'game.start', payload: { roomId: 'r1' } },
+      host(),
+      withFakeDeps(),
+    );
+    if (r.kind !== 'accept') return;
+    const broadcast = r.emits.find((e) => e.type === 'game.started');
+    if (broadcast?.type !== 'game.started') throw new Error('attendu game.started');
+    const { players } = broadcast.payload.initialState;
+    expect(players['p1']?.name).toBe('Léa');
+    expect(players['p2']?.name).toBe('Sami');
+    expect(players['p3']?.name).toBe('Aïcha');
+    expect(broadcast.payload.initialState.roomId).toBe('r1');
+  });
+
   it("le broadcast game.started porte le state public initial", () => {
     const room = makeRoom();
     room.addPlayer({ id: 'p1', name: 'Léa', socketId: 'sock-p1', joinedAt: new Date() });
