@@ -83,7 +83,7 @@ describe('wireStore', () => {
     expect(store.getState()).toBeNull();
   });
 
-  it('ne crashe pas si requestResync throw (socket déconnecté)', () => {
+  it('ne crashe pas si requestResync throw (socket déconnecté) — logue un warn', () => {
     const stub = new SocketClientStub();
     const wrappedClient = {
       ...(stub as object),
@@ -94,15 +94,24 @@ describe('wireStore', () => {
     } as unknown as SocketClient;
     const store = new ClientStore();
     const onResync = vi.fn();
-    wireStore(wrappedClient, store, { onResyncRequested: onResync });
-    stub.fireServerEvent('state.snapshot', makeSnapshot(0));
-    expect(() =>
-      stub.fireServerEvent('state.patch', {
-        version: 99,
-        patches: [],
-      }),
-    ).not.toThrow();
-    // Le throw est swallow ; le callback de notification N'est PAS appelé.
-    expect(onResync).not.toHaveBeenCalled();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      wireStore(wrappedClient, store, { onResyncRequested: onResync });
+      stub.fireServerEvent('state.snapshot', makeSnapshot(0));
+      expect(() =>
+        stub.fireServerEvent('state.patch', {
+          version: 99,
+          patches: [],
+        }),
+      ).not.toThrow();
+      // Le throw est swallow ; le callback de notification N'est PAS appelé.
+      expect(onResync).not.toHaveBeenCalled();
+      // …mais on loggue (cf. review 3c-4 #6).
+      expect(warnSpy).toHaveBeenCalledOnce();
+      const firstArg = warnSpy.mock.calls[0][0];
+      expect(String(firstArg)).toContain('requestResync failed');
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });
