@@ -166,3 +166,55 @@ describe('applyPatches — replace de la racine', () => {
     );
   });
 });
+
+describe('applyPatches — defensive copy de patch.value (review 3c-4 #2)', () => {
+  it("ne lie PAS la référence de patch.value au state (objet)", () => {
+    const myThing = { credits: 0, dossiers: ['a'] };
+    const out = applyPatches({} as Record<string, unknown>, [
+      { op: 'add', path: '/p1', value: myThing },
+    ]);
+    // Mutation côté caller : ne doit PAS affecter le state.
+    myThing.credits = 42;
+    myThing.dossiers.push('b');
+    expect((out as { p1: { credits: number; dossiers: string[] } }).p1).toEqual({
+      credits: 0,
+      dossiers: ['a'],
+    });
+  });
+
+  it("ne lie PAS la référence pour un append à un array", () => {
+    const item = { id: 'd1', kind: 'photo' };
+    const out = applyPatches({ items: [] as unknown[] }, [
+      { op: 'add', path: '/items/-', value: item },
+    ]);
+    item.kind = 'mutated';
+    expect((out as { items: { kind: string }[] }).items[0].kind).toBe('photo');
+  });
+
+  it("ne lie PAS la référence pour un replace de la racine", () => {
+    const newState = { fresh: true, list: [1, 2] };
+    const out = applyPatches({ old: true }, [
+      { op: 'replace', path: '', value: newState },
+    ]);
+    newState.list.push(99);
+    expect((out as { list: number[] }).list).toEqual([1, 2]);
+  });
+});
+
+describe('applyPatches — pattern "-" sur non-array (review 3c-4 #3)', () => {
+  it("refuse de créer une clé littérale '-' sur un objet en add", () => {
+    expect(() =>
+      applyPatches({ stats: { wins: 0 } }, [
+        { op: 'add', path: '/stats/-', value: 42 },
+      ]),
+    ).toThrow(PatchError);
+  });
+
+  it("refuse '-' sur objet en replace aussi", () => {
+    expect(() =>
+      applyPatches({ stats: { wins: 0 } }, [
+        { op: 'replace', path: '/stats/-', value: 42 },
+      ]),
+    ).toThrow(PatchError);
+  });
+});

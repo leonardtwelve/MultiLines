@@ -51,6 +51,16 @@ export function applyPatches(state: unknown, patches: ReadonlyArray<StatePatch>)
 
 // === Internes ===
 
+/**
+ * Deep clone défensif (cf. review 3c-4 #2). Utilisé à 2 endroits :
+ * 1. Au début d'`applyPatches` pour ne pas muter le state d'entrée.
+ * 2. Sur chaque `patch.value` avant insertion, pour éviter de stocker
+ *    une référence à un objet du caller (qui finirait `Object.freeze`-é
+ *    par le `freezeDeep` du `ClientStore` → effet de bord externe).
+ *
+ * Limites du fallback JSON : perd `undefined`, `Date`, `Map`, `Set`.
+ * OK pour notre state plain-JSON ; à revoir si on en sort.
+ */
 function deepClone<T>(v: T): T {
   if (v === null || typeof v !== 'object') return v;
   if (typeof structuredClone === 'function') {
@@ -64,8 +74,9 @@ function applyOne(state: unknown, patch: StatePatch): unknown {
   if (segments.length === 0) {
     // RFC 6901 : path "" pointe la racine. On supporte uniquement le
     // replace de root pour rester explicite ; les autres ops à la
-    // racine sont des erreurs sémantiques.
-    if (patch.op === 'replace') return patch.value;
+    // racine sont des erreurs sémantiques. `patch.value` est cloné pour
+    // éviter la fuite de référence (cf. review 3c-4 #2).
+    if (patch.op === 'replace') return deepClone(patch.value);
     throw new PatchError(`cannot ${patch.op} root`, patch.path, patch.op);
   }
   const { parent, lastSegment } = navigate(state, segments, patch.op, patch.path);
@@ -137,13 +148,18 @@ function setOn(
   op: string,
   path: string,
 ): void {
+  // Defensive copy (cf. review 3c-4 #2) : on n'insère JAMAIS une
+  // référence directe à `value`. Le caller peut continuer à manipuler
+  // son objet sans craindre que le `Object.freeze` récursif appliqué
+  // par le `ClientStore` gèle aussi sa copie locale.
+  const v = deepClone(value);
   if (Array.isArray(parent)) {
     if (segment === '-') {
       // Pattern d'append (cf. spec §3.1).
       if (op !== 'add') {
         throw new PatchError('"-" target only valid for op "add"', path, op);
       }
-      parent.push(value);
+      parent.push(v);
       return;
     }
     const idx = parseIndex(segment);
@@ -154,18 +170,23 @@ function setOn(
       if (idx < 0 || idx > parent.length) {
         throw new PatchError(`add index out of bounds: ${idx}`, path, op);
       }
-      parent.splice(idx, 0, value);
+      parent.splice(idx, 0, v);
     } else {
       if (idx < 0 || idx >= parent.length) {
         throw new PatchError(`replace index out of bounds: ${idx}`, path, op);
       }
-      parent[idx] = value;
+      parent[idx] = v;
     }
     return;
   }
-  // Objet : add et replace sont équivalents (RFC 6902 : add overwrite si
-  // la clé existe, replace exige qu'elle existe). On reste tolérant.
-  (parent as Record<string, unknown>)[segment] = value;
+  // Objet : refuse le segment "-" (réservé aux arrays, RFC 6902).
+  if (segment === '-') {
+    throw new PatchError('"-" target is array-only, not an object key', path, op);
+  }
+  // add et replace sont équivalents sur un objet (RFC 6902 : add
+  // overwrite si la clé existe, replace exige qu'elle existe). On
+  // reste tolérant — documenté dans le README spec.
+  (parent as Record<string, unknown>)[segment] = v;
 }
 
 function removeFrom(
