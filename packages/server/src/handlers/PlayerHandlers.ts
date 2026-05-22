@@ -91,32 +91,86 @@ export function registerPlayerHandlers(params: {
 }
 
 /**
- * Handler global de déconnexion : retire le joueur de toutes les rooms
- * où il est et broadcast `player.left`. Si le Host se déconnecte, on
- * supprime la room et on broadcast aux Players restants.
+ * Délais de grace avant cleanup effectif après un `disconnect`.
  *
- * NB : ce handler ne passe pas (encore) par la state machine — il agit
- * en plus de la machine en attendant la gestion `paused` / `cancelled`
- * lors d'un host-disconnect (slice ultérieure avec timers de grace).
+ * Ces valeurs sont **délibérément plus courtes** que celles de la spec
+ * server-state-machine.md §5 (120 s Player / 300 s Host) parce qu'on
+ * n'a pas encore de `sessionToken` (cf. protocole.md §6.4) pour
+ * permettre une vraie reconnexion identifiée. Un joueur qui revient
+ * pendant la grace serait traité comme un nouveau player → l'ancien
+ * record finirait par expirer de toute façon. Garder ces délais courts
+ * évite d'avoir des records fantômes trop longtemps en RAM.
+ *
+ * Quand sessionToken sera câblé (slice ultérieure), on poussera ces
+ * délais à 120/300 et on câblera la vraie réconciliation.
+ */
+export const PLAYER_DISCONNECT_GRACE_MS = 30_000;
+export const HOST_DISCONNECT_GRACE_MS = 60_000;
+
+/**
+ * Handler global de déconnexion. Implémente une grace **minimaliste** en
+ * attendant le câblage complet sessionToken / paused-state (cf. spec
+ * §5 et faiblesse #2 de la review review 3c-3).
+ *
+ * - **Player disconnect** : émet immédiatement `player.disconnected`
+ *   (purement informatif) puis programme le `player.left` + suppression
+ *   dans 30 s. Pendant la grace, l'enregistrement du joueur reste en
+ *   place pour ne pas perdre son state interne.
+ * - **Host disconnect** : programme la destruction de la room dans 60 s.
+ *   Pendant la grace, aucun event n'est émis aux Players — le serveur
+ *   garde l'option de Host-reconnect (à implémenter avec sessionToken).
  */
 export function registerDisconnectHandler(params: {
   io: Server;
   socket: Socket;
   rooms: RoomRegistry;
+  /**
+   * Délais injectables — par défaut `PLAYER_DISCONNECT_GRACE_MS` /
+   * `HOST_DISCONNECT_GRACE_MS`. Permet aux tests d'intégration de
+   * raccourcir les graces (sinon chaque cas bloque 30-60 s).
+   */
+  playerGraceMs?: number;
+  hostGraceMs?: number;
 }): void {
   const { io, socket, rooms } = params;
+  const playerGraceMs = params.playerGraceMs ?? PLAYER_DISCONNECT_GRACE_MS;
+  const hostGraceMs = params.hostGraceMs ?? HOST_DISCONNECT_GRACE_MS;
 
   socket.on('disconnect', () => {
     for (const room of [...findRoomsForSocket(rooms, socket.id)]) {
       if (room.hostSocketId === socket.id) {
-        io.to(room.id).emit('room.not-found', { roomCode: room.code });
-        rooms.deleteRoom(room.id);
+        // Host : pas de broadcast immédiat. On laisse la room en vie
+        // pendant la grace pour préserver le state. Si on enchaîne le
+        // câblage sessionToken, le Host pourra reprendre la main.
+        setTimeout(() => {
+          // Vérifie que la room existe toujours (peut avoir été
+          // supprimée entretemps par cleanup ou game.cancel).
+          if (!rooms.getRoom(room.id)) return;
+          // Re-check : si le hostSocketId a été remplacé par une vraie
+          // reconnexion (post-sessionToken), on annule la destruction.
+          if (rooms.getRoom(room.id)?.hostSocketId !== socket.id) return;
+          io.to(room.id).emit('room.not-found', { roomCode: room.code });
+          rooms.deleteRoom(room.id);
+        }, hostGraceMs);
       } else {
         const player = room.getPlayers().find((p) => p.socketId === socket.id);
-        if (player) {
-          room.removePlayer(player.id);
+        if (!player) continue;
+        // Notification immédiate (UX : les autres joueurs voient que le
+        // joueur s'est déconnecté sans qu'il soit retiré pour autant).
+        io.to(room.id).emit('player.disconnected', {
+          playerId: player.id,
+          roomId: room.id,
+        });
+        setTimeout(() => {
+          // Re-check : si entretemps le player a été remplacé (même id,
+          // socket différent — possible si sessionToken câblé), on
+          // annule la suppression.
+          const current = rooms.getRoom(room.id)?.getPlayer(player.id);
+          if (!current) return; // déjà parti
+          if (current.socketId !== socket.id) return; // reconnecté
+          rooms.getRoom(room.id)?.removePlayer(player.id);
           io.to(room.id).emit('player.left', { playerId: player.id, roomId: room.id });
-        }
+        }, playerGraceMs);
       }
     }
   });

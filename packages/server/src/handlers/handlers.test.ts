@@ -10,11 +10,17 @@ interface TestHarness {
 }
 
 async function startTestServer(): Promise<TestHarness> {
-  const app = createApp({
-    port: 0,
-    publicUrl: 'http://127.0.0.1:0',
-    corsOrigins: '*',
-  });
+  const app = createApp(
+    {
+      port: 0,
+      publicUrl: 'http://127.0.0.1:0',
+      corsOrigins: '*',
+    },
+    // Graces ultra-courtes pour les tests d'intégration — sinon chaque
+    // cas de disconnect bloquerait 30-60 s. La logique grace réelle
+    // reste vérifiée (séquence player.disconnected → player.left).
+    { playerGraceMs: 50, hostGraceMs: 50 },
+  );
   await new Promise<void>((resolve) => {
     app.http.listen(0, '127.0.0.1', () => resolve());
   });
@@ -143,7 +149,7 @@ describe('Server integration — socket.io handlers', () => {
     expect(payload.serverT).toBeGreaterThanOrEqual(t);
   });
 
-  it("disconnect d'un Player → player.left broadcast à la room", async () => {
+  it("disconnect d'un Player → player.disconnected immédiat, puis player.left après grace", async () => {
     const { sock: host } = await connectClient(h.port);
     h.sockets.push(host);
     const hostRoomCreated = once<{ roomCode: string }>(host, 'room.created');
@@ -155,10 +161,37 @@ describe('Server integration — socket.io handlers', () => {
     player.emit('room.join', { roomCode, playerName: 'Sami' });
     await joined;
 
+    const playerDisco = once<{ playerId: string }>(host, 'player.disconnected');
     const playerLeft = once<{ playerId: string }>(host, 'player.left');
     player.disconnect();
-    const payload = await playerLeft;
-    expect(payload.playerId).toBeDefined();
+    const discoPayload = await playerDisco;
+    expect(discoPayload.playerId).toBeDefined();
+    // La grace est ultra-courte en test (50ms) → on reçoit player.left juste après.
+    const leftPayload = await playerLeft;
+    expect(leftPayload.playerId).toBe(discoPayload.playerId);
+  });
+
+  it("disconnect du Host → room.not-found émis aux Players après grace", async () => {
+    const { sock: host } = await connectClient(h.port);
+    h.sockets.push(host);
+    const hostRoomCreated = once<{ roomId: string; roomCode: string }>(host, 'room.created');
+    host.emit('room.create', { adventureId: 'banque-lune' });
+    const { roomId, roomCode } = await hostRoomCreated;
+
+    const { sock: player } = await connectClient(h.port);
+    h.sockets.push(player);
+    const joined = once(host, 'player.joined');
+    player.emit('room.join', { roomCode, playerName: 'Léa' });
+    await joined;
+
+    const notFound = once<{ roomCode: string }>(player, 'room.not-found');
+    host.disconnect();
+    const payload = await notFound;
+    expect(payload.roomCode).toBe(roomCode);
+    // La room a bien été supprimée du registry.
+    // Petite pause pour s'assurer que le setTimeout a eu le temps de finir.
+    await new Promise((r) => setTimeout(r, 30));
+    expect(h.app.rooms.getRoom(roomId)).toBeUndefined();
   });
 
   // ===========================================================================
