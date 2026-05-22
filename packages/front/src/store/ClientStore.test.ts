@@ -119,6 +119,17 @@ describe('ClientStore — applyPatchBatch versioning', () => {
     expect(store.version).toBe(0);
   });
 
+  it('batch vide bumpe la version SANS re-emit (review 3c-4 #8)', () => {
+    const store = new ClientStore();
+    store.hydrate(makePlayerSnapshot());
+    const listener = vi.fn();
+    store.subscribe(listener);
+    const r = store.applyPatchBatch({ version: 1, patches: [] });
+    expect(r.ok).toBe(true);
+    expect(store.version).toBe(1);
+    expect(listener).not.toHaveBeenCalled();
+  });
+
   it('un patch défaillant déclenche un resync sans muter l’état', () => {
     const store = new ClientStore();
     store.hydrate(makePlayerSnapshot());
