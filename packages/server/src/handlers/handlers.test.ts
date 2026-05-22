@@ -343,4 +343,75 @@ describe('Server integration — socket.io handlers', () => {
     const payload = await err;
     expect(payload.code).toBe('ROOM_STATE_INVALID');
   });
+
+  // ===========================================================================
+  // Slice 3d — state.snapshot bout-en-bout via socket.io réel
+  // ===========================================================================
+
+  it('game.start émet state.snapshot ciblé à Host + chaque Player (review 3d #4)', async () => {
+    const { host, roomId, roomCode } = await setupHostWithRoom();
+    const players = await joinPlayers(roomCode, host, ['Léa', 'Sami', 'Aïcha']);
+
+    // Promesses pour chaque snapshot attendu, posées AVANT l'émission de game.start
+    // (sinon les events arriveraient avant que les listeners soient attachés).
+    type SnapshotPayload = {
+      version: number;
+      audience: 'host' | 'player';
+      public: { adventureId: string; status: string };
+      private?: { playerId: string; roleId: string };
+      hostMeta?: Record<string, unknown>;
+    };
+
+    const hostSnapshot = once<SnapshotPayload>(host, 'state.snapshot');
+    const playerSnapshots = players.map((p) =>
+      once<SnapshotPayload>(p.sock, 'state.snapshot'),
+    );
+
+    host.emit('game.start', { roomId });
+
+    // Host : audience='host', pas de private, hostMeta défini.
+    const hostSnap = await hostSnapshot;
+    expect(hostSnap.audience).toBe('host');
+    expect(hostSnap.version).toBe(0);
+    expect(hostSnap.private).toBeUndefined();
+    expect(hostSnap.hostMeta).toBeDefined();
+    expect(hostSnap.public.status).toBe('briefing');
+
+    // Chaque Player : audience='player', private rempli, pas de hostMeta.
+    for (const [i, snapPromise] of playerSnapshots.entries()) {
+      const snap = await snapPromise;
+      expect(snap.audience).toBe('player');
+      expect(snap.version).toBe(0);
+      expect(snap.hostMeta).toBeUndefined();
+      expect(snap.private).toBeDefined();
+      expect(snap.private?.playerId).toBe(players[i].playerId);
+      expect(snap.private?.roleId).toBeTruthy();
+    }
+  });
+
+  it("le snapshot Player ne fuit PAS le state privé des autres joueurs (sécurité)", async () => {
+    const { host, roomId, roomCode } = await setupHostWithRoom();
+    const players = await joinPlayers(roomCode, host, ['Léa', 'Sami', 'Aïcha']);
+
+    // P2 enregistre TOUS les state.snapshot reçus.
+    const p2Received: Array<{
+      audience: string;
+      private?: { playerId: string };
+    }> = [];
+    players[1].sock.on(
+      'state.snapshot',
+      (snap: { audience: string; private?: { playerId: string } }) => {
+        p2Received.push(snap);
+      },
+    );
+
+    host.emit('game.start', { roomId });
+    // Petite pause pour laisser arriver les 4 snapshots ciblés.
+    await new Promise((r) => setTimeout(r, 200));
+
+    // P2 reçoit EXACTEMENT 1 snapshot — le sien — avec son propre playerId.
+    expect(p2Received).toHaveLength(1);
+    expect(p2Received[0].audience).toBe('player');
+    expect(p2Received[0].private?.playerId).toBe(players[1].playerId);
+  });
 });
