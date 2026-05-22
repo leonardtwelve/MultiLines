@@ -58,8 +58,16 @@ export class RoomStateMachine {
     // 2) Dispatch vers le reducer du statut.
     const reaction = applyReducer(this.room.status, this.room, msg, sender, this.deps);
     if (reaction === null) {
-      // Statut pas encore couvert par un reducer (slice future).
-      // Le message est ignoré sans erreur — handlers logueront en upstream.
+      // Statut pas encore couvert par un reducer (slices ultérieures :
+      // casse / vote / reveal). On loggue pour ne pas swallow
+      // silencieusement un message qui serait censé être traité.
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[state-machine] no reducer for status=%s msg.type=%s sender=%s — silent accept',
+        this.room.status,
+        msg.type,
+        sender.kind,
+      );
       return accept([]);
     }
     return reaction;

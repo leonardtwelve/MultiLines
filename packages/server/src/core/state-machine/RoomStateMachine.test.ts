@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type {
   GameEndReason,
   PlayerId,
@@ -121,16 +121,26 @@ describe('RoomStateMachine — dispatcher', () => {
     expect(r.error.code).toBe('ROOM_STATE_INVALID');
   });
 
-  it('accept silencieux quand le statut n’a pas encore de reducer (slice future)', () => {
+  it('accept silencieux + console.warn quand le statut n’a pas encore de reducer (slice future)', () => {
     const room = makeRoom();
     room.setStatus('casse');
     const sm = new RoomStateMachine(room, { hooks: fakeHooks });
-    // ping est une commande globalement OK ; en `casse` le reducer
-    // renvoie `null` (pas encore implémenté) → la state machine
-    // accepte silencieusement.
-    const r = sm.handle({ type: 'ping', payload: { t: 0 } }, host());
-    expect(r.kind).toBe('accept');
-    if (r.kind !== 'accept') return;
-    expect(r.emits).toHaveLength(0);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      // ping est une commande globalement OK ; en `casse` le reducer
+      // renvoie `null` (pas encore implémenté) → la state machine
+      // accepte silencieusement MAIS loggue (cf. review 3c-3 #4).
+      const r = sm.handle({ type: 'ping', payload: { t: 0 } }, host());
+      expect(r.kind).toBe('accept');
+      if (r.kind !== 'accept') return;
+      expect(r.emits).toHaveLength(0);
+      expect(warnSpy).toHaveBeenCalledOnce();
+      const [fmt, status, msgType] = warnSpy.mock.calls[0];
+      expect(fmt).toContain('no reducer');
+      expect(status).toBe('casse');
+      expect(msgType).toBe('ping');
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });
