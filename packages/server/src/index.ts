@@ -17,12 +17,25 @@ import {
 const SERVER_VERSION = '0.0.1';
 
 /**
+ * Options injectables au démarrage de `createApp`. Utiles surtout aux
+ * tests d'intégration pour raccourcir les graces de déconnexion, qui
+ * sinon tiendraient 30-60 s par cas.
+ */
+export interface CreateAppOptions {
+  playerGraceMs?: number;
+  hostGraceMs?: number;
+}
+
+/**
  * Entry point du serveur Pixel Quests (F11, F17, F20, F21).
  *
  * HTTP minimal (route `/health`) + socket.io pour le protocole temps réel.
  * Les handlers Host et Player sont enregistrés par connexion entrante.
  */
-export function createApp(config = loadConfig()): {
+export function createApp(
+  config = loadConfig(),
+  opts: CreateAppOptions = {},
+): {
   http: ReturnType<typeof createServer>;
   io: Server;
   rooms: RoomRegistry;
@@ -52,7 +65,13 @@ export function createApp(config = loadConfig()): {
     });
     registerHostHandlers({ io, socket, rooms, config });
     registerPlayerHandlers({ io, socket, rooms });
-    registerDisconnectHandler({ io, socket, rooms });
+    registerDisconnectHandler({
+      io,
+      socket,
+      rooms,
+      playerGraceMs: opts.playerGraceMs,
+      hostGraceMs: opts.hostGraceMs,
+    });
   });
 
   return { http, io, rooms };
