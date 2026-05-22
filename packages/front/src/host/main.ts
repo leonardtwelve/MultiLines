@@ -1,12 +1,8 @@
-// ⚠️ POST-PIVOT JACKBOX — refonte prévue Prompt 3.
-// Le flux actuel (Home → Setup → Reveal → Plateau → Result, tout sur tablette)
-// devient :
-//   - Host tablette : Home → Lobby (QR/code) → Plateau (map continue) → Bilan
-//   - Player smartphone : scan QR → choix rôle → réception objectif privé
-//     → propositions d'action / vote → bilan
-// Les actions/intents transitent par le serveur WebSocket (F11, F17, F20).
-// `engine.initStore` et `engine.store.getState()` ont été retirés du
-// `GameEngine` post-archivage du Store client (D7 amendée).
+// ⚠️ POST-PIVOT JACKBOX — flow multijoueur câblé en slice 3d.
+// État actuel :
+//   - Mono-device : Home → Setup → MapScene (inchangé, pour le PoC offline).
+//   - Multijoueur : Home → HostLobby → (à game.start serveur) → MapScene
+//     pilotée par le ClientStore alimenté par state.snapshot + state.patch.
 
 import { GameEngine } from '../core/engine/GameEngine';
 import { SaveManager } from '../core/persistence/SaveManager';
@@ -15,6 +11,7 @@ import { SetupScreen } from './SetupScreen';
 import { HostLobbyScreen } from './lobby/HostLobbyScreen';
 import { SocketClient } from '../network/SocketClient';
 import { getServerUrl } from '../network/env';
+import { ClientStore, wireStore } from '../store';
 import { banqueLuneAdventure } from '../../adventures/banque-lune';
 import type { Adventure } from '../core/types/adventure';
 import type { Player } from '../core/players/Player';
@@ -32,6 +29,8 @@ const save = new SaveManager();
 let currentEngine: GameEngine | null = null;
 let currentAdventure: Adventure | null = null;
 let currentLobby: HostLobbyScreen | null = null;
+let currentClient: SocketClient | null = null;
+let currentStoreUnwire: (() => void) | null = null;
 
 function cleanupActive(): void {
   if (currentAdventure) {
@@ -45,6 +44,14 @@ function cleanupActive(): void {
   if (currentLobby) {
     currentLobby.destroy();
     currentLobby = null;
+  }
+  if (currentStoreUnwire) {
+    currentStoreUnwire();
+    currentStoreUnwire = null;
+  }
+  if (currentClient) {
+    currentClient.disconnect();
+    currentClient = null;
   }
 }
 
@@ -62,29 +69,86 @@ function showHome(): void {
 function showLobby(adventure: Adventure): void {
   cleanupActive();
   root!.innerHTML = '';
+
+  // Un seul SocketClient + ClientStore partagés entre HostLobby et la suite
+  // (MapScene une fois game.started reçu).
   const client = new SocketClient({ url: getServerUrl() });
+  const store = new ClientStore();
+  currentClient = client;
+  currentStoreUnwire = wireStore(client, store);
+
   const lobby = new HostLobbyScreen({
     root: root!,
     client,
     adventureId: adventure.manifest.id,
-    // Le QR pointe le front (le Player), pas le serveur. On utilise l'origine
-    // courante — fonctionne aussi bien en dev (localhost:5173) qu'en prod
-    // (multi-lines.vercel.app). Le chemin `player/index.html` est explicite
-    // et marche partout :
-    //   - Vite dev : sert directement `src/player/index.html`
-    //   - Vercel prod : sert `dist/player/index.html` (vérifié : 200 OK)
-    // (`/player` tout court marche aussi en prod, mais 404 en dev Vite.)
     joinBaseUrl: new URL('player/index.html', window.location.origin).toString(),
     onCancel: () => showHome(),
     onStartGame: ({ roomId, players }) => {
-      // TODO Prompt 3b/c : démarrer effectivement l'aventure côté serveur,
-      // attendre `game.started`, projeter le state.
       // eslint-disable-next-line no-console
-      console.log('[host] start game', { roomId, players });
+      console.log('[host] game.start sent', { roomId, players });
+      client.startGame(roomId);
+      // La transition vers MapScene se déclenche sur l'événement
+      // `game.started` reçu du serveur (cf. listener ci-dessous).
     },
   });
   currentLobby = lobby;
+
+  // Listener qui transitionne le Host vers la MapScene au démarrage
+  // effectif (broadcast serveur). Le store est déjà branché en parallèle.
+  client.on('game.started', (payload) => {
+    transitionToMap(adventure, store, payload.initialState);
+  });
+
   void lobby.render();
+}
+
+/**
+ * Transition du lobby Host vers la MapScene Phaser une fois que le
+ * serveur a confirmé `game.started`. Le store est déjà alimenté par
+ * `state.snapshot` reçu juste avant — la MapScene pourra s'y abonner
+ * pour la suite (positions, alerte, etc.) une fois 3e câblé.
+ */
+function transitionToMap(
+  adventure: Adventure,
+  _store: ClientStore,
+  initialState: {
+    players: Readonly<Record<string, { id: string; name: string; color: string }>>;
+  },
+): void {
+  // Nettoie le lobby DOM mais GARDE le client + store (utilisés par la
+  // MapScene à venir).
+  if (currentLobby) {
+    currentLobby.destroy();
+    currentLobby = null;
+  }
+  root!.innerHTML = '';
+  const container = document.createElement('div');
+  container.id = 'game';
+  root!.appendChild(container);
+
+  const engine = new GameEngine({ parent: container, width: 1280, height: 720 });
+  currentEngine = engine;
+  currentAdventure = adventure;
+
+  // Aligne PlayerManager côté Host avec les vrais joueurs envoyés par
+  // le serveur (legacy — sera projeté depuis le store en slice 3e).
+  for (const p of Object.values(initialState.players)) {
+    engine.players.add({ id: p.id, name: p.name, color: p.color });
+  }
+
+  if ('configure' in adventure && typeof adventure.configure === 'function') {
+    (adventure as typeof banqueLuneAdventure).configure({ onFinish: () => showHome() });
+  }
+
+  void adventure.init(engine).then(() => {
+    engine.start();
+    // TODO 3e : remplacer par une projection complète depuis le store.
+    const initial: GameState = createInitialState();
+    for (const p of Object.values(initialState.players)) {
+      initial.players[p.id] = { id: p.id, name: p.name, color: p.color, isActive: false };
+    }
+    adventure.start(initial);
+  });
 }
 
 function showSetup(adventure: Adventure): void {
@@ -107,29 +171,17 @@ async function launchAdventure(adventure: Adventure, players: Player[]): Promise
   currentEngine = engine;
   currentAdventure = adventure;
 
-  // Compatibilité legacy : on conserve PlayerManager le temps de la migration.
-  // TODO Prompt 3 : le serveur sera la source de vérité (F17), PlayerManager
-  // deviendra une projection.
   for (const p of players) engine.players.add(p);
 
-  // Hook propre à banque-lune (configure onFinish avant init).
   if ('configure' in adventure && typeof adventure.configure === 'function') {
-    (adventure as typeof banqueLuneAdventure).configure({
-      onFinish: () => showHome(),
-    });
+    (adventure as typeof banqueLuneAdventure).configure({ onFinish: () => showHome() });
   }
 
   await adventure.init(engine);
-
   const loading = root!.querySelector('.loading');
   if (loading) loading.remove();
-
   engine.start();
 
-  // TODO Prompt 3 : initialState viendra de la projection serveur via une
-  // sync au démarrage. Pour l'instant, on construit un état initial minimal
-  // côté client (uniquement les joueurs et un statut neutre) pour matcher
-  // le contrat Adventure.start(initialState).
   const initial: GameState = createInitialState();
   for (const p of players) {
     initial.players[p.id] = { id: p.id, name: p.name, color: p.color, isActive: false };
