@@ -120,6 +120,16 @@ export class SocketClient {
     this.setStatus('idle');
   }
 
+  /**
+   * Demande un nouveau snapshot au serveur. Appelée par le
+   * `ClientStore` quand il détecte un gap de version ou une erreur
+   * d'application de patch (cf. store-projection §4 désynchronisation).
+   */
+  requestResync(): void {
+    const sock = this.requireSocket();
+    sock.emit('state.resync.request', {});
+  }
+
   // --- Requêtes Host ---
 
   async createRoom(adventureId: string): Promise<CreateRoomResult> {
