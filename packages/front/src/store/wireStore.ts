@@ -54,8 +54,12 @@ function requestResync(client: SocketClient, opts: WireStoreOptions): void {
   try {
     client.requestResync();
     opts.onResyncRequested?.();
-  } catch {
-    // Le socket n'est plus dispo (déconnexion) — on ignore, la
-    // reconnexion suivante émettra de toute façon un snapshot complet.
+  } catch (err) {
+    // Le socket n'est plus dispo (déconnexion) — la reconnexion
+    // suivante émettra de toute façon un snapshot complet. On loggue
+    // toutefois pour ne pas swallow silencieusement l'erreur (review
+    // 3c-4 #6 — debug en prod sinon impossible).
+    // eslint-disable-next-line no-console
+    console.warn('[wireStore] requestResync failed:', err);
   }
 }
