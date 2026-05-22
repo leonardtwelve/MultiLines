@@ -170,6 +170,12 @@ export class HostLobbyScreen {
     this.offHandlers.push(
       this.props.client.on('player.left', (p) => this.handlePlayerLeft(p)),
     );
+    // Erreurs serveur (ROOM_STATE_INVALID si game.start avec < 3 joueurs,
+    // ROOM_NOT_FOUND, etc.) — sinon l'utilisateur clique sans aucun
+    // feedback (cf. review 3d #1).
+    this.offHandlers.push(
+      this.props.client.on('private.error', (err) => this.showError(err.message)),
+    );
   }
 
   private applyRoomCreated(room: PayloadOf<ServerEvent, 'room.created'>): void {

@@ -126,6 +126,26 @@ describe('HostLobbyScreen', () => {
     expect(err?.textContent).toContain('serveur indisponible');
   });
 
+  it("affiche une erreur reçue via private.error (review 3d #1)", async () => {
+    stub.queueCreateRoom({ roomId: 'r1', roomCode: 'BLUE-CAT', qrUrl: '' });
+    const screen = new HostLobbyScreen({
+      root,
+      client: stub as unknown as SocketClient,
+      adventureId: 'banque-lune',
+      joinBaseUrl: 'http://localhost:5173/player/index.html',
+      onCancel: () => {},
+    });
+    await screen.render();
+    // Simule un game.start refusé serveur (< 3 joueurs).
+    stub.fireServerEvent('private.error', {
+      code: 'ROOM_STATE_INVALID',
+      message: 'Il faut au moins 3 joueurs pour lancer la partie.',
+    });
+    const err = root.querySelector<HTMLElement>('[data-testid="error"]');
+    expect(err?.hidden).toBe(false);
+    expect(err?.textContent).toMatch(/au moins 3/i);
+  });
+
   it('le bouton "back" appelle onCancel et destroy le client', async () => {
     stub.queueCreateRoom({ roomId: 'r1', roomCode: 'BLUE-CAT', qrUrl: '' });
     let cancelled = false;

@@ -29,6 +29,7 @@ export interface BriefingScreenProps {
 
 export class BriefingScreen {
   private offSubscribe: (() => void) | null = null;
+  private offError: (() => void) | null = null;
   private ready = false;
   private rootEl: HTMLElement | null = null;
 
@@ -48,6 +49,7 @@ export class BriefingScreen {
           En attente du démarrage par l'organisateur…
         </p>
       </section>
+      <p class="briefing__error" data-testid="error" hidden></p>
       <button type="button" class="briefing__ready" data-testid="ready" hidden>
         Je suis prêt·e
       </button>
@@ -61,6 +63,11 @@ export class BriefingScreen {
     button?.addEventListener('click', () => this.handleReady());
 
     this.offSubscribe = this.props.store.subscribe(() => this.refresh());
+    // Erreurs serveur (ex: briefing.ready rejeté car déjà en casse) —
+    // sinon le clic « Prêt » est silencieux en cas de refus (review 3d #1).
+    this.offError = this.props.client.on('private.error', (err) =>
+      this.showError(err.message),
+    );
     // Si le store est déjà peuplé au moment de render (hydrate précoce).
     this.refresh();
   }
@@ -68,6 +75,15 @@ export class BriefingScreen {
   destroy(): void {
     this.offSubscribe?.();
     this.offSubscribe = null;
+    this.offError?.();
+    this.offError = null;
+  }
+
+  private showError(message: string): void {
+    const el = this.rootEl?.querySelector<HTMLElement>('[data-testid="error"]');
+    if (!el) return;
+    el.textContent = message;
+    el.hidden = false;
   }
 
   private refresh(): void {
