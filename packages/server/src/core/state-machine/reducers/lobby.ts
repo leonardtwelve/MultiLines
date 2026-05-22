@@ -150,9 +150,40 @@ function handleGameStart(room: Room, deps: LobbyReducerDeps): Reaction {
       payload: { initialState },
     },
   ];
-  for (const player of room.getPlayers()) {
+
+  // === Snapshots audience-tagués pour hydrater les `ClientStore` ===
+  //
+  // C'est le moment où chaque client peut peupler son store local. Le
+  // Host reçoit la vue publique (+ hostMeta vide à ce stade) ; chaque
+  // Player reçoit la vue publique PLUS son state privé (rôle + objectif
+  // + dossiers). Version = 0 — premier snapshot.
+  emits.push({
+    to: { socketId: room.hostSocketId },
+    type: 'state.snapshot',
+    payload: {
+      version: 0,
+      audience: 'host',
+      public: initialState,
+      hostMeta: {},
+    },
+  });
+  for (const player of roomPlayers) {
     const priv = distribution.privates[player.id];
     if (!priv) continue;
+    emits.push({
+      to: { socketId: player.socketId },
+      type: 'state.snapshot',
+      payload: {
+        version: 0,
+        audience: 'player',
+        public: initialState,
+        private: priv,
+      },
+    });
+    // Conserve aussi les events dirigés legacy pour la rétro-compat
+    // (ils encapsulent les mêmes données qui sont dans le snapshot
+    // privé). Les écrans Player peuvent piloter au choix sur l'un ou
+    // l'autre — pratique pendant la transition.
     emits.push({
       to: { socketId: player.socketId },
       type: 'private.role-revealed',

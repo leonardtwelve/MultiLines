@@ -217,6 +217,47 @@ describe('lobby reducer — game.start', () => {
     expect(broadcast.payload.initialState.roomId).toBe('r1');
   });
 
+  it("émet aussi state.snapshot ciblé Host + chaque Player (slice 3d)", () => {
+    const room = makeRoom();
+    room.addPlayer({ id: 'p1', name: 'Léa', socketId: 'sock-p1', joinedAt: new Date() });
+    room.addPlayer({ id: 'p2', name: 'Sami', socketId: 'sock-p2', joinedAt: new Date() });
+    room.addPlayer({ id: 'p3', name: 'Aïcha', socketId: 'sock-p3', joinedAt: new Date() });
+    const r = applyLobby(
+      room,
+      { type: 'game.start', payload: { roomId: 'r1' } },
+      host(),
+      withFakeDeps(),
+    );
+    if (r.kind !== 'accept') throw new Error('attendu accept');
+
+    const snapshots = r.emits.filter((e) => e.type === 'state.snapshot');
+    // 1 snapshot Host + 3 Player.
+    expect(snapshots).toHaveLength(4);
+
+    const hostSnap = snapshots.find(
+      (e) => typeof e.to === 'object' && e.to.socketId === HOST_SOCKET,
+    );
+    expect(hostSnap).toBeDefined();
+    if (hostSnap?.type === 'state.snapshot') {
+      expect(hostSnap.payload.audience).toBe('host');
+      expect(hostSnap.payload.version).toBe(0);
+      expect(hostSnap.payload.private).toBeUndefined();
+      expect(hostSnap.payload.hostMeta).toEqual({});
+    }
+
+    const playerSnaps = snapshots.filter(
+      (e) => typeof e.to === 'object' && e.to.socketId !== HOST_SOCKET,
+    );
+    expect(playerSnaps).toHaveLength(3);
+    for (const snap of playerSnaps) {
+      if (snap.type !== 'state.snapshot') continue;
+      expect(snap.payload.audience).toBe('player');
+      expect(snap.payload.private).toBeDefined();
+      expect(snap.payload.private?.roleId).toBeTruthy();
+      expect(snap.payload.hostMeta).toBeUndefined();
+    }
+  });
+
   it("le broadcast game.started porte le state public initial", () => {
     const room = makeRoom();
     room.addPlayer({ id: 'p1', name: 'Léa', socketId: 'sock-p1', joinedAt: new Date() });
