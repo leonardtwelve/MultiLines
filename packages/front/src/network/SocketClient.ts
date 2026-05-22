@@ -58,11 +58,30 @@ export type JoinRoomResult =
 const DEFAULT_CONNECT_TIMEOUT_MS = 8000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 8000;
 
+/**
+ * Listener différé : enregistré avant `connect()`, attaché au moment de
+ * la connexion réelle. Permet aux consommateurs (wireStore, écrans) de
+ * câbler leurs listeners au moment de la construction sans dépendre du
+ * cycle de vie de la connexion socket.io.
+ */
+interface PendingListener {
+  type: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handler: (...args: any[]) => void;
+}
+
 export class SocketClient {
   private socket: RawSocket | null = null;
   private _status: ConnectionStatus = 'idle';
   private _socketId: SocketId | null = null;
   private readonly statusListeners = new Set<(s: ConnectionStatus) => void>();
+  /**
+   * Listeners enregistrés AVANT que le socket existe (cf. JSDoc
+   * `PendingListener`). Drainés sur `connect()` puis vidés. Les
+   * listeners enregistrés une fois connecté vont directement sur le
+   * socket.io natif.
+   */
+  private pendingListeners: PendingListener[] = [];
 
   constructor(private readonly opts: SocketClientOptions) {}
 
@@ -103,6 +122,14 @@ export class SocketClient {
     sock.on('disconnect', () => this.setStatus('disconnected'));
     sock.on('connect_error', () => this.setStatus('error'));
 
+    // Draine la file des listeners enregistrés AVANT connect.
+    // Important : on attache AVANT d'attendre `connection.established`
+    // pour ne pas rater l'event lui-même si un caller s'y est abonné.
+    for (const p of this.pendingListeners) {
+      this.attachToSocket(sock, p.type, p.handler);
+    }
+    this.pendingListeners = [];
+
     const established = await waitForEvent<PayloadOf<ServerEvent, 'connection.established'>>(
       sock,
       'connection.established',
@@ -117,6 +144,10 @@ export class SocketClient {
     this.socket?.disconnect();
     this.socket = null;
     this._socketId = null;
+    // Les listeners pending sont des intentions persistantes du caller :
+    // on les CONSERVE pour qu'un éventuel `connect()` ultérieur les
+    // ré-attache. Les listeners déjà attachés au socket disparaissent
+    // avec le `disconnect()` natif socket.io.
     this.setStatus('idle');
   }
 
@@ -231,19 +262,56 @@ export class SocketClient {
     type: T,
     handler: (payload: PayloadOf<ServerEvent, T>) => void,
   ): () => void {
-    const sock = this.requireSocket();
-    // socket.io-client expose des génériques très restrictifs sur on/off ;
-    // on bypass leur signature via un cast en EventEmitter brut. La sécurité
-    // de typage est portée par l'API publique de SocketClient elle-même.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = sock as unknown as {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      on(ev: string, fn: (...args: any[]) => void): void;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      off(ev: string, fn: (...args: any[]) => void): void;
+    // Cas A : socket connecté → attache directement.
+    if (this.socket) {
+      this.attachToSocket(this.socket, type, handler);
+      return () => this.detachFromSocket(this.socket, type, handler);
+    }
+    // Cas B : pas encore connecté → met en file d'attente. Le listener
+    // sera attaché au moment du `connect()` (cf. drain dans `connect`).
+    // C'est l'usage typique de `wireStore(client, store)` qui s'abonne
+    // aux events SANS attendre que la connexion soit effective.
+    const pending: PendingListener = { type, handler: handler as PendingListener['handler'] };
+    this.pendingListeners.push(pending);
+    return () => {
+      // Désabonnement post-connect : enlève du socket attaché.
+      if (this.socket) {
+        this.detachFromSocket(this.socket, type, handler);
+      }
+      // Désabonnement pré-connect : enlève de la file.
+      const idx = this.pendingListeners.indexOf(pending);
+      if (idx !== -1) this.pendingListeners.splice(idx, 1);
     };
+  }
+
+  // === Helpers internes pour le socket bas niveau ===
+
+  /**
+   * socket.io-client expose des génériques très restrictifs sur on/off ;
+   * on bypass leur signature via un cast en EventEmitter brut. La sécurité
+   * de typage est portée par l'API publique `on<T>`.
+   */
+  private attachToSocket(
+    sock: RawSocket,
+    type: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handler: (...args: any[]) => void,
+  ): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = sock as unknown as { on(ev: string, fn: (...args: any[]) => void): void };
     raw.on(type, handler);
-    return () => raw.off(type, handler);
+  }
+
+  private detachFromSocket(
+    sock: RawSocket | null,
+    type: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handler: (...args: any[]) => void,
+  ): void {
+    if (!sock) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = sock as unknown as { off(ev: string, fn: (...args: any[]) => void): void };
+    raw.off(type, handler);
   }
 
   // --- Diagnostic ---
