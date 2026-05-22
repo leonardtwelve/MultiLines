@@ -144,6 +144,26 @@ export class SocketClient {
     return payload;
   }
 
+  /**
+   * Demande au serveur de lancer la partie. Fire-and-forget — la
+   * réponse arrive de façon asynchrone via le listener `game.started`
+   * que le caller doit avoir installé. En cas d'erreur (< 3 joueurs,
+   * sender invalide…), le serveur émet `private.error` ciblé.
+   */
+  startGame(roomId: RoomId): void {
+    const sock = this.requireSocket();
+    sock.emit('game.start', { roomId } satisfies PayloadOf<HostRequest, 'game.start'>);
+  }
+
+  /**
+   * Player : signale qu'il a fini de lire son briefing privé. Quand
+   * tous les Players l'ont envoyé, le serveur transitionne en `casse`.
+   */
+  markBriefingReady(): void {
+    const sock = this.requireSocket();
+    sock.emit('briefing.ready', {});
+  }
+
   // --- Requêtes Player ---
 
   /**
