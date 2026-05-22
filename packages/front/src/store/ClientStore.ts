@@ -141,6 +141,13 @@ export class ClientStore {
     if (batch.version !== this._version + 1) {
       return { ok: false, needsResync: true };
     }
+    // Fast path : batch vide (heartbeat de version sans changement de
+    // state). On bumpe la version mais on ne re-emit pas — pas de
+    // raison de réveiller les listeners (cf. review 3c-4 #8).
+    if (batch.patches.length === 0) {
+      this._version = batch.version;
+      return { ok: true };
+    }
     // Application réelle, avec routing public/private.
     try {
       const next = applyAllRouted(this._state, batch.patches);
