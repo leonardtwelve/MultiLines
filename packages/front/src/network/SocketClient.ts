@@ -195,6 +195,21 @@ export class SocketClient {
     sock.emit('briefing.ready', {});
   }
 
+  /**
+   * Player : propose une action de son rôle pendant la phase `casse`.
+   * Fire-and-forget — le serveur valide (joueur actif, action ∈
+   * capabilities, ressources OK) puis résout via le hook aventure.
+   * Le résultat arrive via `action.resolved` broadcast + `state.patch`
+   * (que le `ClientStore` digère automatiquement).
+   *
+   * En cas de refus serveur : `private.error` ciblé (que les écrans
+   * captent — cf. fix #1 review 3d).
+   */
+  proposeAction(actionId: string, params: Readonly<Record<string, unknown>> = {}): void {
+    const sock = this.requireSocket();
+    sock.emit('action.propose', { actionId, params });
+  }
+
   // --- Requêtes Player ---
 
   /**
