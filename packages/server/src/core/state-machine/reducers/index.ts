@@ -15,9 +15,13 @@ import type { Room } from '../../Room';
 import type { AdventureHooks } from '../hooks';
 import { accept, type Reaction, type Sender } from '../types';
 import { applyBriefing, type BriefingReducerDeps } from './briefing';
+import { applyCasse, type CasseReducerDeps } from './casse';
 import { applyLobby, type LobbyReducerDeps } from './lobby';
 
-export interface ReducerDeps extends LobbyReducerDeps, BriefingReducerDeps {
+export interface ReducerDeps
+  extends LobbyReducerDeps,
+    BriefingReducerDeps,
+    CasseReducerDeps {
   hooks: AdventureHooks;
 }
 
@@ -42,6 +46,7 @@ export function applyReducer(
     case 'briefing':
       return applyBriefing(room, msg, sender, deps);
     case 'casse':
+      return applyCasse(room, msg, sender, deps);
     case 'extraction':
     case 'vote':
     case 'reveal':
