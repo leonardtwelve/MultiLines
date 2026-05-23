@@ -7,15 +7,14 @@
  *
  * Pas de Phaser ici — le Player smartphone reste léger.
  *
- * Flow (slice 3d) :
+ * Flow (slices 3a → 3e-3) :
  *   JoinScreen (formulaire code + pseudo)
- *     → onJoined : on garde JoinScreen affiché en mode "rejoint" jusqu'à
- *       ce que le serveur émette state.snapshot
- *     → store.subscribe attrape l'arrivée du state.private (rôle distribué)
- *     → on transitionne vers BriefingScreen
- *   BriefingScreen (rôle + objectif + bouton "Prêt")
- *     → onReady : émet briefing.ready
- *     → reste affichée en "attente des autres" jusqu'à la suite (slice 3e)
+ *     → onJoined : on attend le state.snapshot
+ *   store.private apparaît → BriefingScreen (rôle + objectif + Prêt)
+ *     → onReady : émet briefing.ready, on attend les autres
+ *   store.public.status passe à 'casse' → CassePlayScreen
+ *     → boutons d'action, jauge alerte, résultats inline
+ *   (slice 3f : transitions vote/reveal/ended)
  */
 
 import { SocketClient } from '../network/SocketClient';
@@ -23,6 +22,7 @@ import { getServerUrl } from '../network/env';
 import { ClientStore, wireStore } from '../store';
 import { JoinScreen } from './JoinScreen';
 import { BriefingScreen } from './BriefingScreen';
+import { CassePlayScreen } from './CassePlayScreen';
 
 const root = document.getElementById('app');
 if (!root) {
@@ -36,7 +36,10 @@ const client = new SocketClient({ url: getServerUrl() });
 const store = new ClientStore();
 wireStore(client, store);
 
-let currentScreen: 'join' | 'briefing' = 'join';
+type Screen = 'join' | 'briefing' | 'casse';
+
+let currentScreen: Screen = 'join';
+let currentInstance: { destroy(): void } | null = null;
 
 const joinScreen = new JoinScreen({
   root,
@@ -50,17 +53,29 @@ const joinScreen = new JoinScreen({
     // state.snapshot. La transition est gérée par le subscribe ci-dessous.
   },
 });
+currentInstance = joinScreen;
 joinScreen.render();
 
-// Quand le state.snapshot privé arrive (Host a cliqué "Lancer"), on
-// transitionne vers BriefingScreen.
-const off = store.subscribe((state) => {
-  if (currentScreen === 'briefing') return;
-  if (!state.private) return;
-  // Première fois qu'on a un private dans le store → transition.
-  currentScreen = 'briefing';
-  off();
-  joinScreen.destroy();
-  const briefing = new BriefingScreen({ root, client, store });
-  briefing.render();
+// Subscribe global qui drive les transitions d'écran. Reste branché
+// pour la durée de la session (n'est pas désabonné — au reload de
+// page le subscribe disparaît avec le module).
+store.subscribe((state) => {
+  // join → briefing : dès que state.private apparaît (game.start côté Host).
+  if (currentScreen === 'join' && state.private) {
+    currentScreen = 'briefing';
+    currentInstance?.destroy();
+    const briefing = new BriefingScreen({ root, client, store });
+    currentInstance = briefing;
+    briefing.render();
+    return;
+  }
+  // briefing → casse : dès que status passe à 'casse'.
+  if (currentScreen === 'briefing' && state.public.status === 'casse') {
+    currentScreen = 'casse';
+    currentInstance?.destroy();
+    const casse = new CassePlayScreen({ root, client, store });
+    currentInstance = casse;
+    casse.render();
+    return;
+  }
 });
