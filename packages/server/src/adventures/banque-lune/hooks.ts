@@ -42,6 +42,7 @@ import {
   type RoleId,
 } from './roles';
 import { distributeObjectives, type Objective } from './objectives';
+import { resolveBanqueLuneAction } from './actions';
 
 const ADVENTURE_ID = 'banque-lune';
 
@@ -58,13 +59,22 @@ export function createBanqueLuneAdventureHooks(
   opts: BanqueLuneHooksOptions,
 ): AdventureHooks {
   const rng = opts.rng ?? Math.random;
+  /**
+   * Mémoire interne de la distribution des rôles. Remplie au premier
+   * appel de `distributeRoles`, consultée par `resolveAction` pour
+   * router l'action vers le bon resolver (cf. actions.ts).
+   */
+  const playerRoles = new Map<PlayerId, RoleId>();
 
   return {
     adventureId: ADVENTURE_ID,
 
     distributeRoles(playerIds: ReadonlyArray<PlayerId>): RoleDistribution {
       // 1) Rôles (lève InvalidPlayerCountError si ∉ [3,5]).
-      const playerRoles = distributeRoles(playerIds, rng);
+      const distribution = distributeRoles(playerIds, rng);
+      // Mémorise pour `resolveAction` (closure).
+      playerRoles.clear();
+      for (const [pid, rid] of distribution) playerRoles.set(pid, rid);
 
       // 2) Objectifs (avec anti-blocage G10).
       const objectives = distributeObjectives(
@@ -121,24 +131,38 @@ export function createBanqueLuneAdventureHooks(
       return { privates, publicState };
     },
 
-    // === Stubs slice 3e-1 ===
+    // === Slice 3e-2 : impl partielle ===
 
     /**
-     * Résolution d'action — stub. Arrive en 3e-2 avec le reducer
-     * `casse`. Tant qu'on est en `briefing`, aucune `action.propose`
-     * n'est valide → le validator de la state-machine renvoie
-     * ROOM_STATE_INVALID avant qu'on n'arrive ici.
+     * Résolution d'une action proposée. Slice 3e-2 implémente les 3
+     * actions du Hacker (Intrusion système, Collecte de données,
+     * Surcharge). Les actions des 4 autres rôles arrivent en 3e-2b →
+     * renvoient `null` ici, ce qui déclenche `ACTION_UNKNOWN` côté
+     * state machine.
+     *
+     * Le `roleId` du joueur est récupéré depuis la closure mémorisée
+     * lors de `distributeRoles` — évite de polluer la signature du
+     * hook avec un param `roleId`.
      */
     resolveAction: (
-      _actionId: string,
+      actionId: string,
       _params: Readonly<Record<string, unknown>>,
-      _state: PublicGameState,
-      _byPlayerId: PlayerId,
-    ): ActionResult | null => null,
+      state: PublicGameState,
+      byPlayerId: PlayerId,
+    ): ActionResult | null => {
+      const roleId = playerRoles.get(byPlayerId);
+      if (!roleId) return null;
+      return resolveBanqueLuneAction(actionId, state, byPlayerId, roleId, { rng });
+    },
 
     /**
-     * Événements de tour — stub. Arrive en 3e-2 (jauge d'alerte qui
-     * monte, événements scriptés, etc.).
+     * Événements de tour — MVP slice 3e-2.
+     *
+     * Pour l'instant aucun événement scripté (porte qui s'ouvre,
+     * patrouille de garde, etc.). L'alerte augmente naturellement via
+     * les résolutions d'actions risquées (cf. actions.ts). Les vrais
+     * événements (table d'événements de tour, spec #25) arrivent en
+     * 3e-2b.
      */
     triggerTurnEvents: (_state: PublicGameState): ReadonlyArray<TurnEvent> => [],
 

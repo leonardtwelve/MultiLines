@@ -16,6 +16,7 @@ import type {
   PlayerId,
   PrivatePlayerState,
   PublicGameState,
+  StatePatch,
   TurnEvent,
 } from '@pixel-quests/shared';
 
@@ -28,11 +29,11 @@ import type {
  */
 export interface ActionResult {
   success: boolean;
-  patches: ReadonlyArray<{
-    op: 'replace' | 'add' | 'remove';
-    path: string;
-    value?: unknown;
-  }>;
+  /**
+   * Patches à diffuser via `state.patch` (cf. spec store-projection
+   * §3.1). Utilise le type discriminé `StatePatch` du protocole.
+   */
+  patches: ReadonlyArray<StatePatch>;
   events: ReadonlyArray<TurnEvent>;
 }
 
