@@ -1,4 +1,12 @@
-import type { PlayerId, RoomCode, RoomId, RoomStatus, SocketId } from '@pixel-quests/shared';
+import type {
+  PlayerId,
+  PrivatePlayerState,
+  PublicGameState,
+  RoomCode,
+  RoomId,
+  RoomStatus,
+  SocketId,
+} from '@pixel-quests/shared';
 
 export interface Player {
   id: PlayerId;
@@ -9,6 +17,41 @@ export interface Player {
 
 export const MAX_PLAYERS_PER_ROOM = 5;
 export const MIN_PLAYERS_TO_START = 3;
+
+/**
+ * Sous-état de la phase `casse` — sous-machine documentée dans
+ * `docs/specs/server-state-machine.md §1.3`. Le reducer `casse`
+ * fait progresser ce sous-état au fil des messages reçus + ticks.
+ *
+ * Sliced 3e-2 : `turn-start` → `proposals` → `resolution` → `events`
+ * → `alerte` → `turn-end` (loop ou exit).
+ */
+export type CasseSubState =
+  | 'turn-start'
+  | 'proposals'
+  | 'resolution'
+  | 'events'
+  | 'alerte'
+  | 'turn-end';
+
+/**
+ * Session de partie côté serveur — créée au passage en `briefing`,
+ * détruite au passage en `ended`/`cancelled`.
+ *
+ * C'est la **source de vérité** des state mutations gameplay :
+ * - `public` mirrors ce qui est diffusé aux clients via `state.snapshot`
+ *   + `state.patch` (cf. store-projection §1.1).
+ * - `privates` mirrors ce qui est dirigé socket par socket.
+ * - `version` : sérial monotone des patches émis (cf. spec §4 désync).
+ * - `turnOrder` + `casseSubState` : tracking de la sous-machine `casse`.
+ */
+export interface GameSession {
+  public: PublicGameState;
+  privates: Record<PlayerId, PrivatePlayerState>;
+  version: number;
+  turnOrder: ReadonlyArray<PlayerId>;
+  casseSubState: CasseSubState | null;
+}
 
 /**
  * État d'une room (lobby + partie en cours) côté serveur.
@@ -42,6 +85,12 @@ export class Room {
    * Joueurs ayant émis `briefing.ready`. Vidé à chaque retour en `lobby`.
    */
   private readonly _briefingReady: Set<PlayerId> = new Set();
+  /**
+   * Session de partie — non-null entre `briefing` et `ended`/`cancelled`.
+   * Initialisée par le reducer `lobby` à la transition `lobby → briefing`,
+   * mutée par les reducers ultérieurs (briefing ↔ casse ↔ vote…).
+   */
+  private _session: GameSession | null = null;
 
   constructor(params: {
     id: RoomId;
@@ -166,5 +215,64 @@ export class Room {
   /** Met à jour le timestamp d'activité (cleanup expirés). */
   touch(): void {
     this.lastActivityAt = new Date();
+  }
+
+  // === Session de partie ===
+
+  /**
+   * Pose la session de partie. Appelé une fois, par le reducer `lobby`
+   * à la transition `lobby → briefing` (après `hooks.distributeRoles`).
+   * `turnOrder` détermine la rotation du joueur actif pendant `casse`.
+   */
+  setSession(initial: {
+    public: PublicGameState;
+    privates: Record<PlayerId, PrivatePlayerState>;
+    turnOrder: ReadonlyArray<PlayerId>;
+  }): void {
+    this._session = {
+      public: initial.public,
+      privates: initial.privates,
+      version: 0,
+      turnOrder: [...initial.turnOrder],
+      casseSubState: null,
+    };
+    this.touch();
+  }
+
+  /** Renvoie la session courante (null hors partie). */
+  getSession(): GameSession | null {
+    return this._session;
+  }
+
+  /**
+   * Mutation de la session — utilisée par les reducers casse/vote/...
+   * Le caller passe une fonction qui mute en place (style Immer
+   * sans Immer). On bumpe la version automatiquement.
+   *
+   * **Précondition** : la session existe (lance sinon).
+   */
+  mutateSession(mutator: (session: GameSession) => void): GameSession {
+    if (!this._session) {
+      throw new Error(`Room ${this.id} : aucune session active.`);
+    }
+    mutator(this._session);
+    this._session.version += 1;
+    this.touch();
+    return this._session;
+  }
+
+  /**
+   * Renvoie la version courante de la session (pour la cohérence des
+   * `state.patch` émis). 0 si aucune session.
+   */
+  getSessionVersion(): number {
+    return this._session?.version ?? 0;
+  }
+
+  /**
+   * Clôt la session (transition vers `ended` / `cancelled`).
+   */
+  clearSession(): void {
+    this._session = null;
   }
 }
