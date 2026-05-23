@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { parseCorsOrigins } from './env';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { loadConfig, parseCorsOrigins } from './env';
 
 describe('parseCorsOrigins', () => {
   it("renvoie '*' sur valeur vide ou explicite", () => {
@@ -63,5 +63,41 @@ describe('parseCorsOrigins', () => {
     // comme quantifieur regex.
     const res = parseCorsOrigins('https://a+b.example.com');
     expect(res).toEqual(['https://a+b.example.com']);
+  });
+});
+
+describe('loadConfig — DEV_ALLOW_SOLO', () => {
+  let saved: string | undefined;
+
+  beforeEach(() => {
+    saved = process.env.DEV_ALLOW_SOLO;
+  });
+
+  afterEach(() => {
+    if (saved === undefined) delete process.env.DEV_ALLOW_SOLO;
+    else process.env.DEV_ALLOW_SOLO = saved;
+  });
+
+  it('default = false si la var n’est pas définie', () => {
+    delete process.env.DEV_ALLOW_SOLO;
+    expect(loadConfig().devAllowSolo).toBe(false);
+  });
+
+  it("'true' (ou '1', 'yes') → true", () => {
+    process.env.DEV_ALLOW_SOLO = 'true';
+    expect(loadConfig().devAllowSolo).toBe(true);
+    process.env.DEV_ALLOW_SOLO = '1';
+    expect(loadConfig().devAllowSolo).toBe(true);
+    process.env.DEV_ALLOW_SOLO = 'YES';
+    expect(loadConfig().devAllowSolo).toBe(true);
+  });
+
+  it("'false' (ou '0', '') → false", () => {
+    process.env.DEV_ALLOW_SOLO = 'false';
+    expect(loadConfig().devAllowSolo).toBe(false);
+    process.env.DEV_ALLOW_SOLO = '0';
+    expect(loadConfig().devAllowSolo).toBe(false);
+    process.env.DEV_ALLOW_SOLO = '';
+    expect(loadConfig().devAllowSolo).toBe(false);
   });
 });

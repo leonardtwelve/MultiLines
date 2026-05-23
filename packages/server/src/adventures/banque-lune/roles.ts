@@ -211,7 +211,14 @@ export const ROLES: Readonly<Record<RoleId, Role>> = {
 };
 
 /** Composition d'équipe selon le nombre de joueurs (cf. G7). */
-const ROLES_BY_PLAYER_COUNT: Readonly<Record<3 | 4 | 5, ReadonlyArray<RoleId>>> = {
+const ROLES_BY_PLAYER_COUNT: Readonly<Record<1 | 2 | 3 | 4 | 5, ReadonlyArray<RoleId>>> = {
+  // Compositions DEV / SOLO — non-canoniques (G7 dit 3+ minimum), mais
+  // utiles pour playtest solo / debug avec DEV_ALLOW_SOLO=true côté
+  // serveur. On donne le Hacker en priorité parce qu'il a Surcharge,
+  // l'action emblématique la plus visible pour une démo en local.
+  1: ['hacker'],
+  2: ['hacker', 'faussaire'],
+  // Canoniques (G7) :
   3: ['hacker', 'faussaire', 'infiltre'],
   4: ['hacker', 'faussaire', 'infiltre', 'negociateur'],
   5: ['hacker', 'faussaire', 'infiltre', 'negociateur', 'observateur'],
@@ -219,7 +226,7 @@ const ROLES_BY_PLAYER_COUNT: Readonly<Record<3 | 4 | 5, ReadonlyArray<RoleId>>> 
 
 export class InvalidPlayerCountError extends Error {
   constructor(count: number) {
-    super(`Banque Lune nécessite 3 à 5 joueurs (reçu : ${count})`);
+    super(`Banque Lune nécessite 1 à 5 joueurs (reçu : ${count})`);
     this.name = 'InvalidPlayerCountError';
   }
 }
@@ -227,17 +234,22 @@ export class InvalidPlayerCountError extends Error {
 /**
  * Distribue les rôles aux joueurs (aléatoire mais reproductible via `rng`).
  * Renvoie une `Map<PlayerId, RoleId>`. Lève `InvalidPlayerCountError` si
- * `playerIds.length` n'est pas dans [3, 5].
+ * `playerIds.length` n'est pas dans [1, 5].
+ *
+ * **Compositions canoniques** (G7) : 3, 4, 5 joueurs.
+ * **Compositions DEV/SOLO** : 1, 2 joueurs — réservées au playtest
+ * activé par `DEV_ALLOW_SOLO=true` côté serveur. La validation upstream
+ * (validateGameStart) refuse 1-2 joueurs sans ce flag.
  */
 export function distributeRoles(
   playerIds: ReadonlyArray<PlayerId>,
   rng: () => number = Math.random,
 ): Map<PlayerId, RoleId> {
   const count = playerIds.length;
-  if (count !== 3 && count !== 4 && count !== 5) {
+  if (count < 1 || count > 5) {
     throw new InvalidPlayerCountError(count);
   }
-  const pool = [...ROLES_BY_PLAYER_COUNT[count]];
+  const pool = [...ROLES_BY_PLAYER_COUNT[count as 1 | 2 | 3 | 4 | 5]];
   shuffleInPlace(pool, rng);
   const out = new Map<PlayerId, RoleId>();
   playerIds.forEach((pid, i) => out.set(pid, pool[i]));

@@ -85,14 +85,31 @@ export function validateRoomLeave(room: Room, sender: Sender): ErrorPayload | nu
 }
 
 /**
+ * Options de validation (cf. ValidationContext). Permet de bypasser le
+ * seuil minimum de joueurs en mode dev (`DEV_ALLOW_SOLO=true`).
+ */
+export interface ValidationContext {
+  /**
+   * Si true, accepte `game.start` dès 1 joueur (au lieu de
+   * MIN_PLAYERS_TO_START). Réservé au playtest solo / debug — à NE PAS
+   * activer en prod ouverte au public.
+   */
+  devAllowSolo?: boolean;
+}
+
+/**
  * Validation d'un `game.start` reçu côté serveur.
  *
  * Garde-fous (cf. spec §3.1) :
  * - sender = host
  * - status = lobby
- * - joueurs ≥ MIN_PLAYERS_TO_START (3)
+ * - joueurs ≥ MIN_PLAYERS_TO_START (3) — sauf si `ctx.devAllowSolo`
  */
-export function validateGameStart(room: Room, sender: Sender): ErrorPayload | null {
+export function validateGameStart(
+  room: Room,
+  sender: Sender,
+  ctx: ValidationContext = {},
+): ErrorPayload | null {
   const hostErr = validateSenderIsHost(room, sender);
   if (hostErr) return hostErr;
   if (room.status !== 'lobby') {
@@ -101,10 +118,13 @@ export function validateGameStart(room: Room, sender: Sender): ErrorPayload | nu
       message: 'La partie ne peut être lancée que depuis le salon (lobby).',
     };
   }
-  if (room.playerCount() < MIN_PLAYERS_TO_START) {
+  const minPlayers = ctx.devAllowSolo ? 1 : MIN_PLAYERS_TO_START;
+  if (room.playerCount() < minPlayers) {
     return {
       code: 'ROOM_STATE_INVALID',
-      message: `Il faut au moins ${MIN_PLAYERS_TO_START} joueurs pour lancer la partie.`,
+      message: ctx.devAllowSolo
+        ? 'Aucun joueur dans la partie — ajoute au moins un Player avant de lancer.'
+        : `Il faut au moins ${MIN_PLAYERS_TO_START} joueurs pour lancer la partie.`,
     };
   }
   return null;
@@ -133,6 +153,7 @@ export function validateMessage(
   room: Room,
   msg: ClientRequest,
   sender: Sender,
+  ctx: ValidationContext = {},
 ): ErrorPayload | null {
   switch (msg.type) {
     case 'room.join':
@@ -140,7 +161,7 @@ export function validateMessage(
     case 'room.leave':
       return validateRoomLeave(room, sender);
     case 'game.start':
-      return validateGameStart(room, sender);
+      return validateGameStart(room, sender, ctx);
     case 'briefing.ready':
       return validateBriefingReady(room, sender);
     default:

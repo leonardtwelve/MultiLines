@@ -21,7 +21,7 @@ import type { Room } from '../Room';
 import type { AdventureHooks } from './hooks';
 import { applyReducer, type ReducerDeps } from './reducers';
 import { accept, reject, type Reaction, type Sender } from './types';
-import { validateMessage } from './validators';
+import { validateMessage, type ValidationContext } from './validators';
 
 export interface RoomStateMachineOptions {
   hooks: AdventureHooks;
@@ -29,10 +29,16 @@ export interface RoomStateMachineOptions {
   newPlayerId?: () => string;
   /** RNG pour la distribution des rôles + événements de tour (test : injectable). */
   rng?: () => number;
+  /**
+   * Si true, autorise `game.start` à partir de 1 joueur (mode dev).
+   * Câblé depuis `ServerConfig.devAllowSolo` via le `RoomRegistry`.
+   */
+  devAllowSolo?: boolean;
 }
 
 export class RoomStateMachine {
   private readonly deps: ReducerDeps;
+  private readonly validationCtx: ValidationContext;
 
   constructor(
     public readonly room: Room,
@@ -43,6 +49,7 @@ export class RoomStateMachine {
       newPlayerId: opts.newPlayerId,
       rng: opts.rng,
     };
+    this.validationCtx = { devAllowSolo: opts.devAllowSolo };
   }
 
   /**
@@ -51,7 +58,7 @@ export class RoomStateMachine {
    */
   handle(msg: ClientRequest, sender: Sender): Reaction {
     // 1) Validation contextuelle.
-    const err = validateMessage(this.room, msg, sender);
+    const err = validateMessage(this.room, msg, sender, this.validationCtx);
     if (err) {
       return reject(err);
     }

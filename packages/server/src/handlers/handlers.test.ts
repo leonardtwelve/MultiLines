@@ -15,6 +15,7 @@ async function startTestServer(): Promise<TestHarness> {
       port: 0,
       publicUrl: 'http://127.0.0.1:0',
       corsOrigins: '*',
+      devAllowSolo: false,
     },
     // Graces ultra-courtes pour les tests d'intégration — sinon chaque
     // cas de disconnect bloquerait 30-60 s. La logique grace réelle

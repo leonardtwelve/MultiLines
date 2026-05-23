@@ -22,6 +22,13 @@ export interface ServerConfig {
    * sous-domaine (`https://*.vercel.app`).
    */
   corsOrigins: '*' | CorsOrigin[];
+  /**
+   * **Mode dev/test** : permet de lancer une partie avec 1 ou 2
+   * joueurs (au lieu de 3 minimum imposé par G7). Activé via la var
+   * d'env `DEV_ALLOW_SOLO=true`. À ne **pas** activer en prod ouverte
+   * — c'est un bypass pour playtest solo / debug.
+   */
+  devAllowSolo: boolean;
 }
 
 function readNumber(key: string, fallback: number): number {
@@ -37,6 +44,13 @@ function readNumber(key: string, fallback: number): number {
 function readString(key: string, fallback: string): string {
   const raw = process.env[key];
   return raw === undefined || raw === '' ? fallback : raw;
+}
+
+function readBoolean(key: string, fallback: boolean): boolean {
+  const raw = process.env[key];
+  if (raw === undefined || raw === '') return fallback;
+  const v = raw.trim().toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
 }
 
 /**
@@ -110,5 +124,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     port: readNumber('PORT', 3001),
     publicUrl: readString('PUBLIC_URL', 'http://localhost:3001'),
     corsOrigins: parseCorsOrigins(readString('CORS_ORIGINS', '*')),
+    devAllowSolo: readBoolean('DEV_ALLOW_SOLO', false),
   };
 }

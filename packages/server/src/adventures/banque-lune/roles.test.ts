@@ -92,8 +92,20 @@ describe('distributeRoles', () => {
     }
   });
 
-  it('lève InvalidPlayerCountError pour 2 joueurs', () => {
-    expect(() => distributeRoles(['p1', 'p2'])).toThrow(InvalidPlayerCountError);
+  it("accepte 1 joueur (mode DEV_ALLOW_SOLO) → Hacker par défaut", () => {
+    const out = distributeRoles(['p1'], seededRandom(42));
+    expect(out.size).toBe(1);
+    expect(out.get('p1')).toBe('hacker');
+  });
+
+  it("accepte 2 joueurs (mode DEV_ALLOW_SOLO) → Hacker + Faussaire", () => {
+    const out = distributeRoles(['p1', 'p2'], seededRandom(42));
+    expect(out.size).toBe(2);
+    expect(new Set(out.values())).toEqual(new Set<RoleId>(['hacker', 'faussaire']));
+  });
+
+  it('lève InvalidPlayerCountError pour 0 joueur', () => {
+    expect(() => distributeRoles([])).toThrow(InvalidPlayerCountError);
   });
 
   it('lève InvalidPlayerCountError pour 6 joueurs', () => {

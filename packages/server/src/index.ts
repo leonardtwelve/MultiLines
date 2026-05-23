@@ -40,7 +40,13 @@ export function createApp(
   io: Server;
   rooms: RoomRegistry;
 } {
-  const rooms = new RoomRegistry();
+  const rooms = new RoomRegistry({ devAllowSolo: config.devAllowSolo });
+  if (config.devAllowSolo) {
+    // eslint-disable-next-line no-console
+    console.log(
+      '[pixel-quests/server] ⚠️ DEV_ALLOW_SOLO=true — parties solo activées (debug/playtest)',
+    );
+  }
 
   const http = createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/health') {
