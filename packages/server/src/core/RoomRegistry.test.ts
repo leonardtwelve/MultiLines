@@ -53,6 +53,64 @@ describe('RoomRegistry', () => {
     expect(reg.getStateMachine('inconnu')).toBeUndefined();
   });
 
+  it("route 'banque-lune' vers BanqueLuneAdventureHooks (slice 3e-1)", () => {
+    // On vérifie indirectement via la state machine : si on lance
+    // game.start avec 3 joueurs, les rôles distribués doivent être des
+    // vrais rôles Banque Lune (hacker/faussaire/infiltre), pas l'agent
+    // générique du NoOp.
+    const reg = new RoomRegistry();
+    const room = reg.createRoom('banque-lune', 'sock-host');
+    room.addPlayer({ id: 'p1', name: 'Léa', socketId: 'sock-p1', joinedAt: new Date() });
+    room.addPlayer({ id: 'p2', name: 'Sami', socketId: 'sock-p2', joinedAt: new Date() });
+    room.addPlayer({ id: 'p3', name: 'Aïcha', socketId: 'sock-p3', joinedAt: new Date() });
+    const sm = reg.getStateMachine(room.id);
+    if (!sm) throw new Error('state machine attendue');
+
+    const reaction = sm.handle(
+      { type: 'game.start', payload: { roomId: room.id } },
+      { kind: 'host', socketId: 'sock-host' },
+    );
+    expect(reaction.kind).toBe('accept');
+    if (reaction.kind !== 'accept') return;
+
+    const snapshotEmits = reaction.emits.filter((e) => e.type === 'state.snapshot');
+    const playerSnaps = snapshotEmits.filter(
+      (e) => typeof e.to === 'object' && e.to.socketId.startsWith('sock-p'),
+    );
+    expect(playerSnaps).toHaveLength(3);
+    const validRoles = new Set(['hacker', 'faussaire', 'infiltre']);
+    for (const snap of playerSnaps) {
+      if (snap.type !== 'state.snapshot') continue;
+      expect(validRoles.has(snap.payload.private?.roleId ?? '')).toBe(true);
+    }
+  });
+
+  it("route un adventureId inconnu vers NoOpAdventureHooks (fallback)", () => {
+    const reg = new RoomRegistry();
+    const room = reg.createRoom('aventure-inconnue', 'sock-host');
+    room.addPlayer({ id: 'p1', name: 'Léa', socketId: 'sock-p1', joinedAt: new Date() });
+    room.addPlayer({ id: 'p2', name: 'Sami', socketId: 'sock-p2', joinedAt: new Date() });
+    room.addPlayer({ id: 'p3', name: 'Aïcha', socketId: 'sock-p3', joinedAt: new Date() });
+    const sm = reg.getStateMachine(room.id);
+    if (!sm) throw new Error('state machine attendue');
+    const reaction = sm.handle(
+      { type: 'game.start', payload: { roomId: room.id } },
+      { kind: 'host', socketId: 'sock-host' },
+    );
+    expect(reaction.kind).toBe('accept');
+    if (reaction.kind !== 'accept') return;
+    const playerSnaps = reaction.emits.filter(
+      (e) =>
+        e.type === 'state.snapshot' &&
+        typeof e.to === 'object' &&
+        e.to.socketId.startsWith('sock-p'),
+    );
+    for (const snap of playerSnaps) {
+      if (snap.type !== 'state.snapshot') continue;
+      expect(snap.payload.private?.roleId).toBe('agent'); // ← NoOp générique
+    }
+  });
+
   it("supprime la state machine quand on deleteRoom", () => {
     const reg = new RoomRegistry();
     const r = reg.createRoom('banque-lune', 'sock-1');
