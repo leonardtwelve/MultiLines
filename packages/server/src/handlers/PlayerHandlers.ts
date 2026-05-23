@@ -83,6 +83,31 @@ export function registerPlayerHandlers(params: {
     applyReaction({ reaction, io, socket, roomId: room.id });
   });
 
+  // === action.propose — slice 3e-2 ===
+  //
+  // Player propose une action de son rôle pendant la phase `casse`.
+  // La state machine valide (active player, action ∈ capabilities) +
+  // appelle hooks.resolveAction (RiskRoll) → patches + events.
+  socket.on(
+    'action.propose',
+    (payload: PayloadOf<PlayerRequest, 'action.propose'>) => {
+      const room = findRoomForPlayerSocket(rooms, socket.id);
+      if (!room) {
+        socket.emit('private.error', {
+          code: 'NOT_IN_ROOM',
+          message: 'Tu n’es pas inscrit·e dans une partie.',
+        });
+        return;
+      }
+      const sm = rooms.getStateMachine(room.id);
+      if (!sm) return;
+      const sender = senderFor(socket, room);
+      if (!sender) return;
+      const reaction = sm.handle({ type: 'action.propose', payload }, sender);
+      applyReaction({ reaction, io, socket, roomId: room.id });
+    },
+  );
+
   // === ping — inline ===
 
   socket.on('ping', (payload: PayloadOf<PlayerRequest, 'ping'>) => {

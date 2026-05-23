@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Room } from '../Room';
 import type { Sender } from './types';
 import {
+  validateActionPropose,
   validateBriefingReady,
   validateGameStart,
   validateMessage,
@@ -160,6 +161,99 @@ describe('validateGameStart', () => {
     const err = validateGameStart(room, host('h-sock'), { devAllowSolo: true });
     expect(err?.code).toBe('ROOM_STATE_INVALID');
     expect(err?.message).toMatch(/aucun joueur/i);
+  });
+});
+
+describe('validateActionPropose (slice 3e-2)', () => {
+  // Helper : monte une session minimale en `casse` avec turn actif p1.
+  function makeCasseRoom(): {
+    room: ReturnType<typeof makeRoom>;
+  } {
+    const room = makeRoom('h-sock');
+    addPlayers(room, 3);
+    room.setStatus('briefing');
+    room.setStatus('casse');
+    room.setSession({
+      public: {
+        roomId: room.id,
+        status: 'casse',
+        adventureId: 'banque-lune',
+        alert: 20,
+        players: {},
+        turn: { number: 1, activePlayerId: 'p1' },
+      },
+      privates: {
+        p1: {
+          playerId: 'p1',
+          roleId: 'hacker',
+          capabilities: ['intrusion-systeme', 'collecte-donnees', 'surcharge'],
+          objective: { id: 'H1', description: 'X', hidden: false },
+          dossiers: [],
+          pendingPactes: [],
+        },
+        p2: {
+          playerId: 'p2',
+          roleId: 'faussaire',
+          capabilities: ['faux-ordre'],
+          objective: { id: 'F1', description: 'Y', hidden: false },
+          dossiers: [],
+          pendingPactes: [],
+        },
+        p3: {
+          playerId: 'p3',
+          roleId: 'infiltre',
+          capabilities: ['reconnaissance'],
+          objective: { id: 'I1', description: 'Z', hidden: false },
+          dossiers: [],
+          pendingPactes: [],
+        },
+      },
+      turnOrder: ['p1', 'p2', 'p3'],
+    });
+    return { room };
+  }
+
+  it("OK : action valide du joueur actif en casse", () => {
+    const { room } = makeCasseRoom();
+    const err = validateActionPropose(
+      room,
+      { actionId: 'intrusion-systeme' },
+      player('p1'),
+    );
+    expect(err).toBeNull();
+  });
+
+  it("refuse si pas en casse → ROOM_STATE_INVALID", () => {
+    const { room } = makeCasseRoom();
+    room.setStatus('briefing');
+    const err = validateActionPropose(room, { actionId: 'intrusion-systeme' }, player('p1'));
+    expect(err?.code).toBe('ROOM_STATE_INVALID');
+  });
+
+  it("refuse si pas le joueur actif → NOT_YOUR_TURN", () => {
+    const { room } = makeCasseRoom();
+    const err = validateActionPropose(
+      room,
+      { actionId: 'intrusion-systeme' },
+      player('p2'),
+    );
+    expect(err?.code).toBe('NOT_YOUR_TURN');
+  });
+
+  it("refuse si action hors capabilities → ACTION_NOT_ALLOWED", () => {
+    const { room } = makeCasseRoom();
+    const err = validateActionPropose(room, { actionId: 'faux-ordre' }, player('p1'));
+    expect(err?.code).toBe('ACTION_NOT_ALLOWED');
+  });
+
+  it("refuse si sender Host → NOT_IN_ROOM", () => {
+    const { room } = makeCasseRoom();
+    const err = validateActionPropose(
+      room,
+      { actionId: 'intrusion-systeme' },
+      host('h-sock'),
+    );
+    expect(err?.code).toBe('NOT_IN_ROOM');
   });
 });
 
