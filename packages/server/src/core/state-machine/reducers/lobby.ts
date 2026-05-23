@@ -143,6 +143,22 @@ function handleGameStart(room: Room, deps: LobbyReducerDeps): Reaction {
     players: overlaidPlayers,
   };
 
+  // === Initialise la GameSession côté serveur ===
+  //
+  // C'est notre source de vérité pour les state.patch ultérieurs (cf.
+  // Room.setSession). Le `turnOrder` détermine la rotation du joueur
+  // actif pendant `casse` (slice 3e-2). Ordre = ordre de jointure
+  // (stable, déterministe), randomisable plus tard si besoin.
+  const privates: Record<string, (typeof distribution.privates)[string]> = {};
+  for (const [pid, priv] of Object.entries(distribution.privates)) {
+    privates[pid] = priv;
+  }
+  room.setSession({
+    public: initialState,
+    privates,
+    turnOrder: roomPlayers.map((p) => p.id),
+  });
+
   const emits: Emit[] = [
     {
       to: 'room',

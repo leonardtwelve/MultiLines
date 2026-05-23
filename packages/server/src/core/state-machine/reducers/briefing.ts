@@ -18,6 +18,7 @@ import type { ClientRequest } from '@pixel-quests/shared';
 import type { Room } from '../../Room';
 import type { AdventureHooks } from '../hooks';
 import { accept, type Emit, type Reaction, type Sender } from '../types';
+import { enterCasse } from './casse';
 
 export interface BriefingReducerDeps {
   hooks: AdventureHooks;
@@ -54,15 +55,15 @@ function handleReady(room: Room, sender: Sender): Reaction {
     },
   ];
 
-  // Tous prêts → transition vers `casse`. Le démarrage effectif de
-  // l'acte 2 (initial state casse + emission `turn.started` etc.) sera
-  // câblé à la slice 3c-3 quand on aura les reducers `casse` et le hook
-  // d'initialisation de tour.
+  // Tous prêts → transition vers `casse`. On délègue à `enterCasse`
+  // (slice 3e-2) pour initialiser le tour 1 + émettre turn.started +
+  // state.patch posant status='casse'.
   if (room.allBriefingReady()) {
     room.setStatus('casse');
-    // Pas de broadcast supplémentaire pour le moment — le passage en
-    // `casse` sera reflété par le prochain `state.patch` ou par le
-    // premier `turn.started` (slice 3c-3).
+    const casseReaction = enterCasse(room);
+    if (casseReaction.kind === 'accept') {
+      emits.push(...casseReaction.emits);
+    }
   }
   return accept(emits);
 }
