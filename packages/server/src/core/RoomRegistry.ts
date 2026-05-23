@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 import type { RoomCode, RoomId, SocketId } from '@pixel-quests/shared';
 import { generateUniqueRoomCode } from '../utils/room-code';
 import { Room } from './Room';
+import { createBanqueLuneAdventureHooks } from '../adventures/banque-lune';
 import type { AdventureHooks } from './state-machine/hooks';
 import { createNoOpAdventureHooks } from './state-machine/NoOpAdventureHooks';
 import { RoomStateMachine } from './state-machine/RoomStateMachine';
@@ -9,12 +10,24 @@ import { RoomStateMachine } from './state-machine/RoomStateMachine';
 /**
  * Fabrique des hooks aventure par `adventureId`. Permet de brancher
  * Banque Lune (ou toute future aventure) sans coupler le registry à
- * l'aventure. Défaut : NoOp pour les tests + le MVP de plomberie.
+ * l'aventure. Défaut : dispatch par `adventureId`, fallback NoOp pour
+ * les ids inconnus.
  */
 export type AdventureHooksFactory = (adventureId: string, roomId: RoomId) => AdventureHooks;
 
-const DEFAULT_HOOKS_FACTORY: AdventureHooksFactory = (adventureId, roomId) =>
-  createNoOpAdventureHooks({ adventureId, roomId });
+/**
+ * Factory par défaut : route `'banque-lune'` vers son impl réelle,
+ * tout autre `adventureId` vers le NoOp (utile pour les tests et les
+ * adventures futures pas encore implémentées).
+ */
+const DEFAULT_HOOKS_FACTORY: AdventureHooksFactory = (adventureId, roomId) => {
+  switch (adventureId) {
+    case 'banque-lune':
+      return createBanqueLuneAdventureHooks({ roomId });
+    default:
+      return createNoOpAdventureHooks({ adventureId, roomId });
+  }
+};
 
 /**
  * Registre global des rooms actives sur le serveur.
