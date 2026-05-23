@@ -51,12 +51,16 @@ describe('createBanqueLuneAdventureHooks — distributeRoles', () => {
     }
   });
 
-  it("lève InvalidPlayerCountError pour < 3 ou > 5 joueurs", () => {
+  it("lève InvalidPlayerCountError pour 0 ou > 5 joueurs (1-2 OK en mode DEV)", () => {
     const hooks = createBanqueLuneAdventureHooks({ roomId: 'r1' });
-    expect(() => hooks.distributeRoles(['p1', 'p2'])).toThrow(InvalidPlayerCountError);
+    expect(() => hooks.distributeRoles([])).toThrow(InvalidPlayerCountError);
     expect(() =>
       hooks.distributeRoles(['p1', 'p2', 'p3', 'p4', 'p5', 'p6']),
     ).toThrow(InvalidPlayerCountError);
+    // 1 et 2 joueurs sont acceptés (gestion du seuil min faite côté
+    // validateGameStart selon DEV_ALLOW_SOLO).
+    expect(() => hooks.distributeRoles(['p1'])).not.toThrow();
+    expect(() => hooks.distributeRoles(['p1', 'p2'])).not.toThrow();
   });
 
   it("supporte 5 joueurs (composition étendue avec Observateur)", () => {

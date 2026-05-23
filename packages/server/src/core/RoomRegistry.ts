@@ -46,10 +46,25 @@ export class RoomRegistry {
   private readonly hooksFactory: AdventureHooksFactory;
   private readonly expiryMs: number;
 
-  constructor(opts: { hooksFactory?: AdventureHooksFactory; expiryMs?: number } = {}) {
+  constructor(
+    opts: {
+      hooksFactory?: AdventureHooksFactory;
+      expiryMs?: number;
+      /**
+       * Passé tel quel à chaque `RoomStateMachine` créée. Activé via
+       * `ServerConfig.devAllowSolo` (env `DEV_ALLOW_SOLO=true`) pour
+       * autoriser les parties solo (1 joueur min au lieu de 3) en
+       * playtest / debug. **Ne pas activer en prod ouverte au public.**
+       */
+      devAllowSolo?: boolean;
+    } = {},
+  ) {
     this.hooksFactory = opts.hooksFactory ?? DEFAULT_HOOKS_FACTORY;
     this.expiryMs = opts.expiryMs ?? 60 * 60 * 1000;
+    this.devAllowSolo = opts.devAllowSolo ?? false;
   }
+
+  private readonly devAllowSolo: boolean;
 
   createRoom(adventureId: string, hostSocketId: SocketId): Room {
     const id = nanoid();
@@ -58,7 +73,10 @@ export class RoomRegistry {
     this.byId.set(id, room);
     this.byCode.set(code, room);
     const hooks = this.hooksFactory(adventureId, id);
-    this.stateMachines.set(id, new RoomStateMachine(room, { hooks }));
+    this.stateMachines.set(
+      id,
+      new RoomStateMachine(room, { hooks, devAllowSolo: this.devAllowSolo }),
+    );
     return room;
   }
 

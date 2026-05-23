@@ -133,12 +133,33 @@ describe('validateGameStart', () => {
     expect(validateGameStart(room, host('h-sock'))?.code).toBe('ROOM_STATE_INVALID');
   });
 
-  it('refuse si < 3 joueurs', () => {
+  it('refuse si < 3 joueurs (mode normal)', () => {
     const room = makeRoom('h-sock');
     addPlayers(room, 2);
     const err = validateGameStart(room, host('h-sock'));
     expect(err?.code).toBe('ROOM_STATE_INVALID');
     expect(err?.message).toMatch(/au moins 3/i);
+  });
+
+  it("DEV_ALLOW_SOLO=true : accepte 1 joueur", () => {
+    const room = makeRoom('h-sock');
+    addPlayers(room, 1);
+    const err = validateGameStart(room, host('h-sock'), { devAllowSolo: true });
+    expect(err).toBeNull();
+  });
+
+  it("DEV_ALLOW_SOLO=true : accepte 2 joueurs aussi", () => {
+    const room = makeRoom('h-sock');
+    addPlayers(room, 2);
+    const err = validateGameStart(room, host('h-sock'), { devAllowSolo: true });
+    expect(err).toBeNull();
+  });
+
+  it("DEV_ALLOW_SOLO=true : refuse encore 0 joueur (message dédié)", () => {
+    const room = makeRoom('h-sock');
+    const err = validateGameStart(room, host('h-sock'), { devAllowSolo: true });
+    expect(err?.code).toBe('ROOM_STATE_INVALID');
+    expect(err?.message).toMatch(/aucun joueur/i);
   });
 });
 
