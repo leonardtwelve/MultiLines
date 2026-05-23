@@ -130,6 +130,66 @@ export function validateGameStart(
   return null;
 }
 
+/**
+ * Validation d'un `action.propose` reçu côté serveur (slice 3e-2).
+ *
+ * Garde-fous (spec §4 anti-triche) :
+ * - status = casse
+ * - sender = Player ∈ room
+ * - sender = joueur actif courant (`turn.activePlayerId`)
+ * - `actionId` ∈ capabilities du rôle du joueur (extrait du
+ *   `PrivatePlayerState` stocké dans la session)
+ *
+ * Ne vérifie PAS les ressources (Crédits suffisants pour le boost,
+ * etc.) — ça arrive avec le pricing en 3e-2b. Aujourd'hui les 3
+ * actions Hacker n'ont pas de coût Crédits.
+ */
+export function validateActionPropose(
+  room: Room,
+  payload: { actionId: string },
+  sender: Sender,
+): ErrorPayload | null {
+  if (room.status !== 'casse') {
+    return {
+      code: 'ROOM_STATE_INVALID',
+      message: "Les actions ne sont pas autorisées en dehors du casse.",
+    };
+  }
+  const playerErr = validateSenderIsPlayer(room, sender);
+  if (playerErr) return playerErr;
+  if (sender.kind !== 'player') return playerErr; // typeguard pour TS
+  const session = room.getSession();
+  if (!session) {
+    return {
+      code: 'ROOM_STATE_INVALID',
+      message: "Aucune partie en cours.",
+    };
+  }
+  const activeId = session.public.turn?.activePlayerId;
+  if (activeId && sender.playerId !== activeId) {
+    return {
+      code: 'NOT_YOUR_TURN',
+      message: "Ce n'est pas ton tour de jouer.",
+    };
+  }
+  const priv = session.privates[sender.playerId];
+  if (!priv) {
+    // Player présent dans la room mais sans private dans la session —
+    // anomalie (devrait ne jamais arriver). Refuse défensivement.
+    return {
+      code: 'NOT_IN_ROOM',
+      message: "Tu n'as pas reçu de rôle pour cette partie.",
+    };
+  }
+  if (!priv.capabilities.includes(payload.actionId)) {
+    return {
+      code: 'ACTION_NOT_ALLOWED',
+      message: `L'action "${payload.actionId}" n'est pas dans tes capacités.`,
+    };
+  }
+  return null;
+}
+
 /** Validation d'un `briefing.ready` reçu côté serveur (cf. spec §3.2). */
 export function validateBriefingReady(room: Room, sender: Sender): ErrorPayload | null {
   if (room.status !== 'briefing') {
@@ -164,8 +224,11 @@ export function validateMessage(
       return validateGameStart(room, sender, ctx);
     case 'briefing.ready':
       return validateBriefingReady(room, sender);
+    case 'action.propose':
+      return validateActionPropose(room, msg.payload, sender);
     default:
-      // Messages non encore couverts (slice 3c-3+).
+      // Messages non encore couverts (slice 3e-2b+ : move.tile,
+      // pacte.*, vote.cast).
       return null;
   }
 }
