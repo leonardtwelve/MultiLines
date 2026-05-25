@@ -78,9 +78,9 @@ describe('loadConfig — DEV_ALLOW_SOLO', () => {
     else process.env.DEV_ALLOW_SOLO = saved;
   });
 
-  it('default = false si la var n’est pas définie', () => {
+  it('default = true si la var n’est pas définie (phase de dev — solo activé par défaut)', () => {
     delete process.env.DEV_ALLOW_SOLO;
-    expect(loadConfig().devAllowSolo).toBe(false);
+    expect(loadConfig().devAllowSolo).toBe(true);
   });
 
   it("'true' (ou '1', 'yes') → true", () => {
@@ -92,12 +92,15 @@ describe('loadConfig — DEV_ALLOW_SOLO', () => {
     expect(loadConfig().devAllowSolo).toBe(true);
   });
 
-  it("'false' (ou '0', '') → false", () => {
+  it("'false' (ou '0') → false (override explicite du défaut)", () => {
     process.env.DEV_ALLOW_SOLO = 'false';
     expect(loadConfig().devAllowSolo).toBe(false);
     process.env.DEV_ALLOW_SOLO = '0';
     expect(loadConfig().devAllowSolo).toBe(false);
+  });
+
+  it("'' (vide) → fallback au défaut (true en phase de dev)", () => {
     process.env.DEV_ALLOW_SOLO = '';
-    expect(loadConfig().devAllowSolo).toBe(false);
+    expect(loadConfig().devAllowSolo).toBe(true);
   });
 });
