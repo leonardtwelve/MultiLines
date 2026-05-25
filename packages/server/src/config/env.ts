@@ -24,9 +24,11 @@ export interface ServerConfig {
   corsOrigins: '*' | CorsOrigin[];
   /**
    * **Mode dev/test** : permet de lancer une partie avec 1 ou 2
-   * joueurs (au lieu de 3 minimum imposé par G7). Activé via la var
-   * d'env `DEV_ALLOW_SOLO=true`. À ne **pas** activer en prod ouverte
-   * — c'est un bypass pour playtest solo / debug.
+   * joueurs (au lieu de 3 minimum imposé par G7).
+   *
+   * **Activé par défaut** pendant la phase de développement (slice 3e-3
+   * → playtest solo). Passer `DEV_ALLOW_SOLO=false` côté env pour
+   * forcer le seuil G7 quand on ouvrira au public.
    */
   devAllowSolo: boolean;
 }
@@ -124,6 +126,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     port: readNumber('PORT', 3001),
     publicUrl: readString('PUBLIC_URL', 'http://localhost:3001'),
     corsOrigins: parseCorsOrigins(readString('CORS_ORIGINS', '*')),
-    devAllowSolo: readBoolean('DEV_ALLOW_SOLO', false),
+    // Défaut `true` pour la phase de dev (slice 3e-3 → playtest solo).
+    // À repasser explicitement à `false` quand on ouvrira au public.
+    devAllowSolo: readBoolean('DEV_ALLOW_SOLO', true),
   };
 }
